@@ -77,14 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "House of Tea — Bubble & Burgers" },
+      { name: "description", content: "Gourmet burgers, bubble tea, shawarma & cold coffee." },
+      { name: "author", content: "House of Tea" },
+      { property: "og:title", content: "House of Tea — Bubble & Burgers" },
+      { property: "og:description", content: "Luxurious street food with a Gen-Z edge." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {
