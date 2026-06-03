@@ -28,6 +28,7 @@ function Index() {
       <Navbar />
       <main>
         <Hero />
+        <WhatWeServe />
       </main>
     </div>
   );
