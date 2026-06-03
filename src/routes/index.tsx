@@ -30,6 +30,7 @@ function Index() {
       <main>
         <Hero />
         <WhatWeServe />
+        <FanFavorites />
       </main>
     </div>
   );
