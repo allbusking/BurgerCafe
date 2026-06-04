@@ -31,8 +31,10 @@ function Index() {
       <Navbar />
       <main>
         <Hero />
+        <MarqueeStrip />
         <WhatWeServe />
         <FanFavorites />
+        <HowItWorks />
       </main>
     </div>
   );
