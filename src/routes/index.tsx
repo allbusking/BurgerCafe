@@ -6,6 +6,7 @@ import { WhatWeServe } from "@/components/WhatWeServe";
 import { FanFavorites } from "@/components/FanFavorites";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Testimonials } from "@/components/Testimonials";
+import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,6 +39,7 @@ function Index() {
         <HowItWorks />
         <Testimonials />
       </main>
+      <Footer />
     </div>
   );
 }
