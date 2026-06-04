@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Star, TrendingUp, Utensils, Award } from "lucide-react";
 
 const testimonials = [
