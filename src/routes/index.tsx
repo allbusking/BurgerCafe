@@ -39,6 +39,7 @@ function Index() {
         <HowItWorks />
         <Testimonials />
       </main>
+      <Footer />
     </div>
   );
 }
