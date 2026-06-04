@@ -5,6 +5,7 @@ import { MarqueeStrip } from "@/components/MarqueeStrip";
 import { WhatWeServe } from "@/components/WhatWeServe";
 import { FanFavorites } from "@/components/FanFavorites";
 import { HowItWorks } from "@/components/HowItWorks";
+import { Testimonials } from "@/components/Testimonials";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,6 +36,7 @@ function Index() {
         <WhatWeServe />
         <FanFavorites />
         <HowItWorks />
+        <Testimonials />
       </main>
     </div>
   );
