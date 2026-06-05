@@ -130,9 +130,10 @@ function MenuPage() {
     });
   }, [active, query]);
 
-  const handleAdd = (id: string) => {
-    setAdded((s) => ({ ...s, [id]: true }));
-    setTimeout(() => setAdded((s) => ({ ...s, [id]: false })), 1400);
+  const handleAdd = (p: Product) => {
+    cartStore.add({ id: p.id, name: p.name, category: p.category, price: p.price });
+    setAdded((s) => ({ ...s, [p.id]: true }));
+    setTimeout(() => setAdded((s) => ({ ...s, [p.id]: false })), 1400);
   };
 
   return (
