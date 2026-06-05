@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Menu, X, ShoppingCart, User, Flame } from "lucide-react";
+import { useCart } from "@/lib/cart-store";
 
 const NAV = [
   { label: "Home", to: "/" },
-  { label: "Menu", to: "/" },
+  { label: "Menu", to: "/menu" },
   { label: "About", to: "/" },
   { label: "Contact", to: "/" },
 ];
@@ -12,7 +13,8 @@ const NAV = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const cartCount = 3; // demo count
+  const cart = useCart();
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -80,14 +82,14 @@ export function Navbar() {
             {/* Right Actions */}
             <div className="flex items-center gap-2 md:gap-3">
               {/* Cart */}
-              <button className="relative grid h-10 w-10 place-items-center rounded-full glass hover:bg-white/10 transition-colors">
+              <Link to="/cart" className="relative grid h-10 w-10 place-items-center rounded-full glass hover:bg-white/10 transition-colors">
                 <ShoppingCart size={18} className="text-foreground" />
                 {cartCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-neon text-[10px] font-bold text-black px-1 animate-badge-pulse">
                     {cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Order Now */}
               <button className="hidden md:inline-flex items-center rounded-full bg-neon px-5 py-2.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_20px_rgba(200,241,53,0.4)] hover:scale-105">

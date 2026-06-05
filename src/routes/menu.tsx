@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Search, Star, Check, Plus } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { cartStore } from "@/lib/cart-store";
 
 export const Route = createFileRoute("/menu")({
   head: () => ({
@@ -129,9 +130,10 @@ function MenuPage() {
     });
   }, [active, query]);
 
-  const handleAdd = (id: string) => {
-    setAdded((s) => ({ ...s, [id]: true }));
-    setTimeout(() => setAdded((s) => ({ ...s, [id]: false })), 1400);
+  const handleAdd = (p: Product) => {
+    cartStore.add({ id: p.id, name: p.name, category: p.category, price: p.price });
+    setAdded((s) => ({ ...s, [p.id]: true }));
+    setTimeout(() => setAdded((s) => ({ ...s, [p.id]: false })), 1400);
   };
 
   return (
@@ -267,7 +269,7 @@ function MenuPage() {
 
                   {/* Add to cart */}
                   <button
-                    onClick={() => handleAdd(p.id)}
+                    onClick={() => handleAdd(p)}
                     className={[
                       "mt-4 w-full rounded-full py-3 text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2",
                       added[p.id]
