@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Menu, X, ShoppingCart, User, Flame } from "lucide-react";
+import { useCart } from "@/lib/cart-store";
 
 const NAV = [
   { label: "Home", to: "/" },
-  { label: "Menu", to: "/" },
+  { label: "Menu", to: "/menu" },
   { label: "About", to: "/" },
   { label: "Contact", to: "/" },
 ];
@@ -12,7 +13,8 @@ const NAV = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const cartCount = 3; // demo count
+  const cart = useCart();
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
