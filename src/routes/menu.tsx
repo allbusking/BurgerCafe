@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Search, Star, Check, Plus } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { cartStore } from "@/lib/cart-store";
 
 export const Route = createFileRoute("/menu")({
   head: () => ({
