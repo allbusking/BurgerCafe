@@ -269,7 +269,7 @@ function MenuPage() {
 
                   {/* Add to cart */}
                   <button
-                    onClick={() => handleAdd(p.id)}
+                    onClick={() => handleAdd(p)}
                     className={[
                       "mt-4 w-full rounded-full py-3 text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2",
                       added[p.id]
