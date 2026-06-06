@@ -314,7 +314,7 @@ function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; co
                     </td>
                   </tr>
                 )}
-              </>
+              </tbody>
             );
           })}
         </tbody>
