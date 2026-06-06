@@ -282,9 +282,8 @@ function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; co
           {data.map((o) => {
             const isOpen = openId === o.id;
             return (
-              <>
+              <tbody key={o.id} className="contents">
                 <tr
-                  key={o.id}
                   onClick={() => expandable && setOpenId(isOpen ? null : o.id)}
                   className={`border-b border-white/5 transition-colors ${expandable ? "cursor-pointer" : ""} hover:bg-white/[0.03]`}
                 >
