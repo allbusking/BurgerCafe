@@ -111,8 +111,20 @@ function CheckoutPage() {
     }
     setSubmitting(true);
     setTimeout(() => {
+      const orderId = `HOT-2024-${String(Math.floor(1000 + Math.random() * 9000))}`;
+      const order = {
+        id: orderId,
+        items: items.map((i) => ({ id: i.id, name: i.name, qty: i.qty, price: i.price })),
+        total: totals.total,
+        address: mode === "Delivery" ? form.address : undefined,
+        mode,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem("hotbb-last-order", JSON.stringify(order));
+      } catch {}
       cartStore.clear();
-      navigate({ to: "/" });
+      navigate({ to: "/order-confirmation" });
     }, 1200);
   };
 
