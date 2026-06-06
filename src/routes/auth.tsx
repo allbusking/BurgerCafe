@@ -34,7 +34,7 @@ function AuthPage() {
       <div
         aria-hidden
         className="absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full blur-3xl opacity-30 pointer-events-none"
-        style={{ background: "radial-gradient(circle, hsl(var(--neon, 75 95% 57%) / 0.4), transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--neon) 40%, transparent), transparent 70%)" }}
       />
 
       <div className="relative z-10 min-h-screen grid place-items-center px-4 py-16">
