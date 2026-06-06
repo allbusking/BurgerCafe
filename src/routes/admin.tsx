@@ -282,45 +282,40 @@ function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; co
           const isOpen = openId === o.id;
           return (
             <tbody key={o.id}>
-          {data.map((o) => {
-            const isOpen = openId === o.id;
-            return (
-              <tbody key={o.id} className="contents">
-                <tr
-                  onClick={() => expandable && setOpenId(isOpen ? null : o.id)}
-                  className={`border-b border-white/5 transition-colors ${expandable ? "cursor-pointer" : ""} hover:bg-white/[0.03]`}
-                >
-                  <td className="px-6 py-4 font-mono text-xs text-neon">{o.id}</td>
-                  <td className="px-6 py-4">{o.customer}</td>
-                  <td className="px-6 py-4 text-foreground/70">
-                    {o.items.reduce((s, i) => s + i.qty, 0)} item{o.items.length > 1 ? "s" : ""}
-                  </td>
-                  <td className="px-6 py-4 font-semibold">₹{o.total}</td>
-                  <td className="px-6 py-4"><StatusBadge status={o.status} /></td>
-                  <td className="px-6 py-4 text-foreground/50 text-xs">{o.time}</td>
-                  <td className="px-6 py-4 text-right">
-                    <StatusDropdown current={o.status} onChange={(s) => setStatus(o.id, s)} />
+              <tr
+                onClick={() => expandable && setOpenId(isOpen ? null : o.id)}
+                className={`border-b border-white/5 transition-colors ${expandable ? "cursor-pointer" : ""} hover:bg-white/[0.03]`}
+              >
+                <td className="px-6 py-4 font-mono text-xs text-neon">{o.id}</td>
+                <td className="px-6 py-4">{o.customer}</td>
+                <td className="px-6 py-4 text-foreground/70">
+                  {o.items.reduce((s, i) => s + i.qty, 0)} item{o.items.length > 1 ? "s" : ""}
+                </td>
+                <td className="px-6 py-4 font-semibold">₹{o.total}</td>
+                <td className="px-6 py-4"><StatusBadge status={o.status} /></td>
+                <td className="px-6 py-4 text-foreground/50 text-xs">{o.time}</td>
+                <td className="px-6 py-4 text-right">
+                  <StatusDropdown current={o.status} onChange={(s) => setStatus(o.id, s)} />
+                </td>
+              </tr>
+              {expandable && isOpen && (
+                <tr className="bg-black/30">
+                  <td colSpan={7} className="px-6 py-4">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-wider text-foreground/40 mb-2">Items</p>
+                      {o.items.map((it, i) => (
+                        <div key={i} className="flex justify-between text-sm text-foreground/80">
+                          <span>{it.name} × {it.qty}</span>
+                          <span>₹{it.price * it.qty}</span>
+                        </div>
+                      ))}
+                    </div>
                   </td>
                 </tr>
-                {expandable && isOpen && (
-                  <tr className="bg-black/30">
-                    <td colSpan={7} className="px-6 py-4">
-                      <div className="space-y-1">
-                        <p className="text-xs uppercase tracking-wider text-foreground/40 mb-2">Items</p>
-                        {o.items.map((it, i) => (
-                          <div key={i} className="flex justify-between text-sm text-foreground/80">
-                            <span>{it.name} × {it.qty}</span>
-                            <span>₹{it.price * it.qty}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            );
-          })}
-        </tbody>
+              )}
+            </tbody>
+          );
+        })}
       </table>
     </div>
   );
