@@ -278,7 +278,10 @@ function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; co
             <th className="px-6 py-3 font-medium text-right">Action</th>
           </tr>
         </thead>
-        <tbody>
+        {data.map((o) => {
+          const isOpen = openId === o.id;
+          return (
+            <tbody key={o.id}>
           {data.map((o) => {
             const isOpen = openId === o.id;
             return (
