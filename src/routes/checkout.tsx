@@ -9,17 +9,9 @@ import { LoadingButton } from "@/components/LoadingButton";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/context/ToastContext";
 
-function computeTotals(
-  items: { price: number; qty: number }[],
-  mode: "Delivery" | "Pickup"
-) {
+function computeTotals(items: { price: number; qty: number }[], mode: "Delivery" | "Pickup") {
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const delivery =
-    mode === "Pickup"
-      ? 0
-      : subtotal >= 499 || subtotal === 0
-        ? 0
-        : 40;
+  const delivery = mode === "Pickup" ? 0 : subtotal >= 499 || subtotal === 0 ? 0 : 40;
   const gst = Math.round(subtotal * 0.05);
   const total = subtotal + delivery + gst;
   return { subtotal, delivery, gst, total };
@@ -47,11 +39,7 @@ const baseSchema = {
 
 const deliverySchema = z.object({
   ...baseSchema,
-  address: z
-    .string()
-    .trim()
-    .min(10, "Please enter a full delivery address")
-    .max(500),
+  address: z.string().trim().min(10, "Please enter a full delivery address").max(500),
 });
 const pickupSchema = z.object({
   ...baseSchema,
@@ -132,10 +120,7 @@ function CheckoutPage() {
         localStorage.setItem("hotbb-last-order", JSON.stringify(order));
         const rawOrders = localStorage.getItem("hotbb-orders-v1");
         const orders = rawOrders ? JSON.parse(rawOrders) : [];
-        localStorage.setItem(
-          "hotbb-orders-v1",
-          JSON.stringify([order, ...orders].slice(0, 20)),
-        );
+        localStorage.setItem("hotbb-orders-v1", JSON.stringify([order, ...orders].slice(0, 20)));
       } catch {}
       clearCart();
       showToast("Order placed successfully! 🎉", "success");
@@ -145,151 +130,151 @@ function CheckoutPage() {
 
   return (
     <PageTransition>
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <Navbar />
+      <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <Navbar />
 
-      <main className="flex-1 pt-32 md:pt-36 pb-16">
-        <div className="mx-auto max-w-7xl px-4">
-          <h1 className="font-display text-5xl md:text-7xl tracking-tight">
-            ALMOST THERE 🚀
-          </h1>
-          <p className="mt-3 text-muted-foreground">
-            Just a few details and we'll start cooking.
-          </p>
+        <main className="flex-1 pt-32 md:pt-36 pb-16">
+          <div className="mx-auto max-w-7xl px-4">
+            <h1 className="font-display text-5xl md:text-7xl tracking-tight">ALMOST THERE 🚀</h1>
+            <p className="mt-3 text-muted-foreground">
+              Just a few details and we'll start cooking.
+            </p>
 
-          <form
-            onSubmit={handleSubmit}
-            className="mt-10 grid grid-cols-1 lg:grid-cols-5 gap-8"
-            noValidate
-          >
-            {/* Form */}
-            <div className="lg:col-span-3 space-y-5">
-              <Field
-                label="Full Name"
-                value={form.name}
-                onChange={(v) => set("name", v)}
-                error={errors.name}
-                placeholder="Aryan Mehra"
-              />
-              <Field
-                label="Phone Number"
-                type="tel"
-                value={form.phone}
-                onChange={(v) => set("phone", v)}
-                error={errors.phone}
-                placeholder="+91 98765 43210"
-              />
-              <Field
-                label="Email Address"
-                type="email"
-                value={form.email}
-                onChange={(v) => set("email", v)}
-                error={errors.email}
-                placeholder="you@example.com"
-              />
-              {deliveryMode === "Delivery" && (
+            <form
+              onSubmit={handleSubmit}
+              className="mt-10 grid grid-cols-1 lg:grid-cols-5 gap-8"
+              noValidate
+            >
+              {/* Form */}
+              <div className="lg:col-span-3 space-y-5">
                 <Field
-                  label="Delivery Address"
-                  multiline
-                  value={form.address}
-                  onChange={(v) => set("address", v)}
-                  error={errors.address}
-                  placeholder="Flat / House no., Street, Area, City, PIN"
+                  label="Full Name"
+                  value={form.name}
+                  onChange={(v) => set("name", v)}
+                  error={errors.name}
+                  placeholder="Aryan Mehra"
                 />
-              )}
-              <Field
-                label="Special Instructions (optional)"
-                multiline
-                value={form.instructions}
-                onChange={(v) => set("instructions", v)}
-                error={errors.instructions}
-                placeholder="Extra spicy, no onions, ring twice..."
-              />
-            </div>
-
-            {/* Summary */}
-            <div className="lg:col-span-2">
-              <div className="sticky top-28 rounded-3xl bg-[#1A1A1A] border border-white/10 p-6 space-y-5">
-                <h2 className="font-display text-3xl tracking-wide">
-                  ORDER SUMMARY
-                </h2>
-                <span className="inline-block text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-muted-foreground">
-                  {deliveryMode}
-                </span>
-
-                <ul className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                  {items.map((i) => (
-                    <li key={i.id} className="flex items-start justify-between gap-3 text-sm">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-foreground font-semibold truncate">{i.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {i.category} × {i.qty}
-                        </p>
-                      </div>
-                      <span className="font-display text-lg text-neon shrink-0">
-                        ₹{i.price * i.qty}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="border-t border-white/10 pt-4 space-y-2 text-sm">
-                  <Row label="Subtotal" value={`₹${totals.subtotal}`} />
-                  <Row
-                    label="Delivery fee"
-                    value={
-                      totals.delivery === 0 ? (
-                        <span className="text-neon font-bold">FREE</span>
-                      ) : (
-                        `₹${totals.delivery}`
-                      )
-                    }
+                <Field
+                  label="Phone Number"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(v) => set("phone", v)}
+                  error={errors.phone}
+                  placeholder="+91 98765 43210"
+                />
+                <Field
+                  label="Email Address"
+                  type="email"
+                  value={form.email}
+                  onChange={(v) => set("email", v)}
+                  error={errors.email}
+                  placeholder="you@example.com"
+                />
+                {deliveryMode === "Delivery" && (
+                  <Field
+                    label="Delivery Address"
+                    multiline
+                    value={form.address}
+                    onChange={(v) => set("address", v)}
+                    error={errors.address}
+                    placeholder="Flat / House no., Street, Area, City, PIN"
                   />
-                  <Row label="GST (5%)" value={`₹${totals.gst}`} />
-                </div>
-
-                <div className="pt-4 border-t border-white/10 flex items-end justify-between">
-                  <span className="text-sm uppercase tracking-widest text-muted-foreground">
-                    Total
-                  </span>
-                  <span className="font-display text-4xl text-neon">
-                    ₹{totals.total}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 p-3">
-                  <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#0D2A6B]">
-                    <span className="text-white font-display text-sm tracking-tighter">
-                      R
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-foreground">Razorpay</p>
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <ShieldCheck size={11} /> Secure Payment
-                    </p>
-                  </div>
-                </div>
-
-                <LoadingButton
-                  type="submit"
-                  isLoading={submitting}
-                  className="fixed bottom-4 left-4 right-4 z-50 rounded-full bg-neon py-5 text-base font-extrabold text-black transition-all duration-300 hover:shadow-[0_0_28px_rgba(200,241,53,0.6)] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed lg:static lg:w-full"
-                >
-                  Place Order & Pay ₹{totals.total}
-                </LoadingButton>
-
-                <p className="text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
-                  <Lock size={11} /> 100% Secure • Powered by Razorpay
-                </p>
+                )}
+                <Field
+                  label="Special Instructions (optional)"
+                  multiline
+                  value={form.instructions}
+                  onChange={(v) => set("instructions", v)}
+                  error={errors.instructions}
+                  placeholder="Extra spicy, no onions, ring twice..."
+                />
               </div>
-            </div>
-          </form>
-        </div>
-      </main>
 
-      <Footer />
-    </div>
+              {/* Summary */}
+              <div className="lg:col-span-2">
+                <div className="sticky top-28 rounded-3xl bg-[#1A1A1A] border border-white/10 p-6 space-y-5">
+                  <h2 className="font-display text-3xl tracking-wide">ORDER SUMMARY</h2>
+                  <span className="inline-block text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-muted-foreground">
+                    {deliveryMode}
+                  </span>
+
+                  <ul className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {items.map((i) => (
+                      <li key={i.id} className="flex items-start justify-between gap-3 text-sm">
+                        {i.image && (
+                          <img
+                            src={i.image}
+                            alt={i.name}
+                            loading="lazy"
+                            className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground font-semibold truncate">{i.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {i.category} × {i.qty}
+                          </p>
+                        </div>
+                        <span className="font-display text-lg text-neon shrink-0">
+                          ₹{i.price * i.qty}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="border-t border-white/10 pt-4 space-y-2 text-sm">
+                    <Row label="Subtotal" value={`₹${totals.subtotal}`} />
+                    <Row
+                      label="Delivery fee"
+                      value={
+                        totals.delivery === 0 ? (
+                          <span className="text-neon font-bold">FREE</span>
+                        ) : (
+                          `₹${totals.delivery}`
+                        )
+                      }
+                    />
+                    <Row label="GST (5%)" value={`₹${totals.gst}`} />
+                  </div>
+
+                  <div className="pt-4 border-t border-white/10 flex items-end justify-between">
+                    <span className="text-sm uppercase tracking-widest text-muted-foreground">
+                      Total
+                    </span>
+                    <span className="font-display text-4xl text-neon">₹{totals.total}</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 p-3">
+                    <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#0D2A6B]">
+                      <span className="text-white font-display text-sm tracking-tighter">R</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-foreground">Razorpay</p>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <ShieldCheck size={11} /> Secure Payment
+                      </p>
+                    </div>
+                  </div>
+
+                  <LoadingButton
+                    type="submit"
+                    isLoading={submitting}
+                    className="fixed bottom-4 left-4 right-4 z-50 rounded-full bg-neon py-5 text-base font-extrabold text-black transition-all duration-300 hover:shadow-[0_0_28px_rgba(200,241,53,0.6)] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed lg:static lg:w-full"
+                  >
+                    Place Order & Pay ₹{totals.total}
+                  </LoadingButton>
+
+                  <p className="text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
+                    <Lock size={11} /> 100% Secure • Powered by Razorpay
+                  </p>
+                </div>
+              </div>
+            </form>
+          </div>
+        </main>
+
+        <Footer />
+      </div>
     </PageTransition>
   );
 }

@@ -1,10 +1,5 @@
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useState,
-  useEffect,
-} from "react";
+import { createContext, useContext, ReactNode, useState, useEffect } from "react";
+import { getProductImage } from "@/utils/productImages";
 
 export interface CartItem {
   id: string;
@@ -52,7 +47,7 @@ function normalizeItem(item: Partial<CartItem> & CartProduct): CartItem {
     name: item.name,
     category: item.category,
     price: item.price,
-    image: item.image,
+    image: getProductImage(item.id, item.category, item.image),
     quantity,
     qty: quantity,
   };
@@ -60,9 +55,7 @@ function normalizeItem(item: Partial<CartItem> & CartProduct): CartItem {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [deliveryMode, setDeliveryModeState] = useState<"Delivery" | "Pickup">(
-    "Delivery"
-  );
+  const [deliveryMode, setDeliveryModeState] = useState<"Delivery" | "Pickup">("Delivery");
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Hydrate from localStorage
@@ -75,9 +68,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems(JSON.parse(savedCart).map(normalizeItem));
       }
       if (savedDelivery) {
-        setDeliveryModeState(
-          savedDelivery as "Delivery" | "Pickup"
-        );
+        setDeliveryModeState(savedDelivery as "Delivery" | "Pickup");
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage:", error);
@@ -104,8 +95,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (existing) {
         return prevItems.map((i) =>
           i.id === item.id
-            ? { ...i, quantity: i.quantity + 1, qty: i.qty + 1 }
-            : i
+            ? {
+                ...i,
+                image: getProductImage(item.id, item.category, item.image || i.image),
+                quantity: i.quantity + 1,
+                qty: i.qty + 1,
+              }
+            : i,
         );
       }
       return [...prevItems, normalizeItem(item)];
@@ -125,9 +121,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeFromCart(id);
     } else {
       setItems((prevItems) =>
-        prevItems.map((i) =>
-          i.id === id ? { ...i, quantity, qty: quantity } : i
-        )
+        prevItems.map((i) => (i.id === id ? { ...i, quantity, qty: quantity } : i)),
       );
     }
   };
@@ -143,10 +137,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
-  const totalPrice = items.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
+  const totalPrice = items.reduce((total, item) => total + item.price * item.quantity, 0);
 
   const getTotalItems = () => totalItems;
 

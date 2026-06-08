@@ -12,6 +12,7 @@ import { useCartContext } from "@/context/CartContext";
 import { useToast } from "@/context/ToastContext";
 import { formatDate } from "@/utils/formatDate";
 import { formatPrice } from "@/utils/formatPrice";
+import { getProductImage } from "@/utils/productImages";
 
 export const Route = createFileRoute("/my-orders")({
   head: () => ({
@@ -77,9 +78,7 @@ function MyOrdersPage() {
         <Navbar />
         <main className="mx-auto max-w-6xl px-4 pt-32 pb-20 md:pt-40">
           <ScrollReveal>
-            <h1 className="font-display text-6xl leading-none text-cream md:text-8xl">
-              MY ORDERS
-            </h1>
+            <h1 className="font-display text-6xl leading-none text-cream md:text-8xl">MY ORDERS</h1>
             <p className="mt-3 text-muted-foreground">
               Everything you&apos;ve ordered, all in one place.
             </p>
@@ -101,9 +100,7 @@ function MyOrdersPage() {
                     <article className="rounded-2xl border border-white/5 bg-[#1A1A1A] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-neon/30 hover:shadow-[0_20px_50px_rgba(0,0,0,0.25)] md:p-6">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <p className="font-display text-3xl text-neon">
-                            #{order.id}
-                          </p>
+                          <p className="font-display text-3xl text-neon">#{order.id}</p>
                           <p className="text-sm text-muted-foreground">
                             {formatDate(order.createdAt)}
                           </p>
@@ -121,12 +118,22 @@ function MyOrdersPage() {
                             key={`${order.id}-${item.id}`}
                             className="flex items-center justify-between gap-4 text-sm"
                           >
-                            <span className="text-foreground/80">
-                              {item.name}{" "}
-                              <span className="text-muted-foreground">
-                                x {item.quantity ?? item.qty ?? 1}
+                            <div className="flex min-w-0 items-center gap-3">
+                              {getProductImage(item.id, item.category, item.image) && (
+                                <img
+                                  src={getProductImage(item.id, item.category, item.image)}
+                                  alt={item.name}
+                                  loading="lazy"
+                                  className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                                />
+                              )}
+                              <span className="min-w-0 truncate text-foreground/80">
+                                {item.name}{" "}
+                                <span className="text-muted-foreground">
+                                  x {item.quantity ?? item.qty ?? 1}
+                                </span>
                               </span>
-                            </span>
+                            </div>
                             <span className="text-muted-foreground">
                               {formatPrice(item.price * (item.quantity ?? item.qty ?? 1))}
                             </span>
@@ -149,7 +156,7 @@ function MyOrdersPage() {
                                   name: item.name,
                                   category: item.category ?? "Combos",
                                   price: item.price,
-                                  image: item.image,
+                                  image: getProductImage(item.id, item.category, item.image),
                                 }),
                               );
                             });
