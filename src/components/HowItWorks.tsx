@@ -26,7 +26,22 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="about" className="relative w-full bg-cream py-24 md:py-32">
+    <section id="about" className="relative w-full bg-cream pt-24 pb-32 md:pt-32 md:pb-40">
+      <div
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-0 translate-y-px leading-[0]"
+        aria-hidden="true"
+      >
+        <svg
+          viewBox="0 0 1440 90"
+          preserveAspectRatio="none"
+          className="h-16 w-full md:h-24"
+        >
+          <path
+            d="M0 38C96 55 188 62 292 53C426 42 548 12 684 27C815 42 905 68 1076 58C1211 50 1322 38 1440 50V90H0V38Z"
+            fill="var(--background)"
+          />
+        </svg>
+      </div>
       {/* Subtle grain overlay */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.04]"

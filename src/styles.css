@@ -1,8 +1,8 @@
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap");
+
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -57,7 +57,7 @@
   --foreground: oklch(0.96 0.02 85);          /* cream */
   --charcoal: oklch(0.11 0 0);                /* #111111 */
   --cream: oklch(0.96 0.02 85);               /* #F5F0E8 */
-  --neon: oklch(0.92 0.22 122);               /* #C8F135 neon yellow-green */
+  --neon: #C8F135;                             /* neon yellow-green */
   --amber-glow: oklch(0.71 0.20 45);          /* #FF6B00 warm amber */
 
   --card: oklch(0.11 0 0);
@@ -111,6 +111,30 @@
 
   html {
     scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background: var(--neon);
+    color: var(--background);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--neon) var(--background);
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--neon);
+    border-radius: 999px;
   }
 
   body {
@@ -184,13 +208,26 @@
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
   }
-  .animate-marquee { animation: marquee 30s linear infinite; }
+  .animate-marquee { animation: marquee 25s linear infinite; }
+  .animate-marquee-reverse { animation: marquee 25s linear infinite reverse; }
 
   @keyframes badge-pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.15); }
   }
   .animate-badge-pulse { animation: badge-pulse 2s ease-in-out infinite; }
+
+  @keyframes toast-in {
+    0% { opacity: 0; transform: translateX(24px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  .animate-toast-in { animation: toast-in 0.25s ease-out; }
+
+  @keyframes slide-in-right {
+    0% { opacity: 0; transform: translateX(32px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  .animate-slide-in-right { animation: slide-in-right 0.28s ease-out; }
 
   @keyframes fade-in {
     0% { opacity: 0; transform: translateY(10px); }
@@ -216,5 +253,123 @@
   .text-stroke-neon {
     -webkit-text-stroke: 2px var(--neon);
     color: transparent;
+  }
+
+  /* Mobile-first responsive font scaling */
+  @media (max-width: 640px) {
+    :root {
+      font-size: 14px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    :root {
+      font-size: 13px;
+    }
+  }
+
+  @media (max-width: 375px) {
+    :root {
+      font-size: 12.5px;
+    }
+  }
+
+  /* Page transitions */
+  @keyframes page-fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .animate-page-fade-in {
+    animation: page-fade-in 0.6s ease-out;
+  }
+
+  /* Card fade up on scroll (intersection observer) */
+  @keyframes card-fade-up {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .animate-card-fade-up {
+    animation: card-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* Button scale on click */
+  @keyframes button-scale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+  }
+  .animate-button-scale {
+    animation: button-scale 0.2s ease-out;
+  }
+
+  /* Skeleton loader shimmer */
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+    background: linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.05) 75%);
+    background-size: 1000px 100%;
+    background-position: -1000px 0;
+  }
+
+  /* Responsive button tapping */
+  @media (hover: none) and (pointer: coarse) {
+    button, a {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Improve text readability on mobile */
+  @media (max-width: 640px) {
+    h1, h2, h3, h4 {
+      line-height: 1;
+    }
+
+    .font-display {
+      letter-spacing: 0;
+    }
+  }
+
+  /* Grid responsive improvements */
+  @media (max-width: 640px) {
+    .grid {
+      gap: 0.75rem;
+    }
+  }
+
+  /* Container padding adjustments for small screens */
+  @media (max-width: 375px) {
+    .container, [class*="max-w-"] {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  /* Input focus states for better mobile accessibility */
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--neon);
+    outline-offset: 2px;
+  }
+
+  /* Mobile-friendly tap highlight */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s ease-out;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--neon);
+    outline-offset: 3px;
+  }
+
+  /* Smooth scroll restoration */
+  * {
+    scroll-behavior: smooth;
   }
 }

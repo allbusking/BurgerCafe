@@ -1,13 +1,30 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Minus, Plus, Trash2, ShoppingBag, Truck, Store } from "lucide-react";
+import { Minus, Plus, Trash2, Truck, Store } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import {
-  cartStore,
-  computeTotals,
-  useCart,
-  useDeliveryMode,
-} from "@/lib/cart-store";
+import { useCartContext } from "@/context/CartContext";
+import { EmptyCart } from "@/components/EmptyStates";
+import { LoadingButton } from "@/components/LoadingButton";
+import { PageTransition } from "@/components/PageTransition";
+import { ScrollReveal } from "@/components/ScrollReveal";
+import { useState } from "react";
+import { useToast } from "@/context/ToastContext";
+
+function computeTotals(
+  items: { price: number; qty: number }[],
+  mode: "Delivery" | "Pickup"
+) {
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const delivery =
+    mode === "Pickup"
+      ? 0
+      : subtotal >= 499 || subtotal === 0
+        ? 0
+        : 40;
+  const gst = Math.round(subtotal * 0.05);
+  const total = subtotal + delivery + gst;
+  return { subtotal, delivery, gst, total };
+}
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -29,12 +46,20 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
 };
 
 function CartPage() {
-  const items = useCart();
-  const mode = useDeliveryMode();
+  const { items, deliveryMode, setQuantity, removeItem, setDeliveryMode } =
+    useCartContext();
   const navigate = useNavigate();
-  const totals = computeTotals(items, mode);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const { showToast } = useToast();
+  const totals = computeTotals(items, deliveryMode);
+
+  const goToCheckout = () => {
+    setCheckingOut(true);
+    setTimeout(() => navigate({ to: "/checkout" }), 350);
+  };
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
 
@@ -45,28 +70,13 @@ function CartPage() {
           </h1>
 
           {items.length === 0 ? (
-            <div className="mt-16 grid place-items-center text-center">
-              <div className="grid h-32 w-32 place-items-center rounded-full bg-white/5 border border-white/10 mb-6">
-                <ShoppingBag size={56} className="text-muted-foreground" />
-              </div>
-              <p className="font-display text-4xl md:text-5xl text-foreground">
-                Your cart is lonely 😢
-              </p>
-              <p className="mt-2 text-muted-foreground">
-                Let's fix that. Pick something delicious.
-              </p>
-              <Link
-                to="/menu"
-                className="mt-8 inline-flex items-center rounded-full bg-neon px-8 py-3.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] hover:scale-105"
-              >
-                Start Ordering
-              </Link>
-            </div>
+            <EmptyCart />
           ) : (
             <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Items */}
               <div className="lg:col-span-2 space-y-4">
-                {items.map((item) => (
+                {items.map((item, index) => (
+                  <ScrollReveal key={item.id} delay={Math.min(index * 45, 240)}>
                   <div
                     key={item.id}
                     className="group relative flex gap-4 p-4 rounded-2xl bg-[#1A1A1A] border border-white/5 hover:border-neon/30 transition-all duration-300 animate-fade-in"
@@ -93,7 +103,7 @@ function CartPage() {
 
                       <div className="mt-auto flex items-center gap-2 pt-2">
                         <button
-                          onClick={() => cartStore.setQty(item.id, item.qty - 1)}
+                          onClick={() => setQuantity(item.id, item.qty - 1)}
                           aria-label="Decrease"
                           className="grid h-8 w-8 place-items-center rounded-full bg-neon/20 text-neon hover:bg-neon hover:text-black transition-colors"
                         >
@@ -103,7 +113,7 @@ function CartPage() {
                           {item.qty}
                         </span>
                         <button
-                          onClick={() => cartStore.setQty(item.id, item.qty + 1)}
+                          onClick={() => setQuantity(item.id, item.qty + 1)}
                           aria-label="Increase"
                           className="grid h-8 w-8 place-items-center rounded-full bg-neon/20 text-neon hover:bg-neon hover:text-black transition-colors"
                         >
@@ -114,7 +124,10 @@ function CartPage() {
 
                     <div className="flex flex-col items-end justify-between">
                       <button
-                        onClick={() => cartStore.remove(item.id)}
+                        onClick={() => {
+                          removeItem(item.id);
+                          showToast("Item removed from cart", "neutral");
+                        }}
                         aria-label="Remove"
                         className="text-muted-foreground hover:text-red-500 transition-colors"
                       >
@@ -125,6 +138,7 @@ function CartPage() {
                       </span>
                     </div>
                   </div>
+                  </ScrollReveal>
                 ))}
               </div>
 
@@ -139,11 +153,11 @@ function CartPage() {
                   <div className="grid grid-cols-2 gap-1 p-1 rounded-full bg-white/5">
                     {(["Delivery", "Pickup"] as const).map((m) => {
                       const Icon = m === "Delivery" ? Truck : Store;
-                      const active = mode === m;
+                      const active = deliveryMode === m;
                       return (
                         <button
                           key={m}
-                          onClick={() => cartStore.setDelivery(m)}
+                          onClick={() => setDeliveryMode(m)}
                           className={[
                             "flex items-center justify-center gap-2 rounded-full py-2 text-sm font-semibold transition-all",
                             active
@@ -173,7 +187,7 @@ function CartPage() {
                     <Row label="GST (5%)" value={`₹${totals.gst}`} />
                   </div>
 
-                  {mode === "Delivery" && totals.subtotal > 0 && totals.subtotal < 499 && (
+                  {deliveryMode === "Delivery" && totals.subtotal > 0 && totals.subtotal < 499 && (
                     <p className="text-xs text-muted-foreground">
                       Add ₹{499 - totals.subtotal} more for FREE delivery 🚚
                     </p>
@@ -188,12 +202,13 @@ function CartPage() {
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => navigate({ to: "/checkout" })}
-                    className="w-full rounded-full bg-neon py-4 text-base font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.55)] hover:scale-[1.02]"
+                  <LoadingButton
+                    isLoading={checkingOut}
+                    onClick={goToCheckout}
+                    className="fixed bottom-4 left-4 right-4 z-50 rounded-full bg-neon py-4 text-base font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.55)] hover:scale-[1.02] active:scale-95 disabled:opacity-70 lg:static lg:w-full"
                   >
                     Proceed to Checkout
-                  </button>
+                  </LoadingButton>
 
                   <Link
                     to="/menu"
@@ -210,6 +225,7 @@ function CartPage() {
 
       <Footer />
     </div>
+    </PageTransition>
   );
 }
 

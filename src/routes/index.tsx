@@ -7,6 +7,7 @@ import { FanFavorites } from "@/components/FanFavorites";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Testimonials } from "@/components/Testimonials";
 import { Footer } from "@/components/Footer";
+import { PageTransition } from "@/components/PageTransition";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <main>
@@ -41,5 +43,6 @@ function Index() {
       </main>
       <Footer />
     </div>
+    </PageTransition>
   );
 }

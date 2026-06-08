@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock, MapPin } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { LoadingButton } from "@/components/LoadingButton";
+import { PageTransition } from "@/components/PageTransition";
 
 export const Route = createFileRoute("/order-confirmation")({
   head: () => ({
@@ -43,8 +45,10 @@ function OrderConfirmationPage() {
       createdAt: new Date().toISOString(),
     };
   }, []);
+  const [tracking, setTracking] = useState(false);
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       <Navbar />
       <Confetti />
@@ -122,9 +126,16 @@ function OrderConfirmationPage() {
 
           {/* Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <button className="rounded-full bg-neon px-8 py-3.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] hover:scale-[1.02]">
+            <LoadingButton
+              isLoading={tracking}
+              onClick={() => {
+                setTracking(true);
+                window.setTimeout(() => setTracking(false), 900);
+              }}
+              className="rounded-full bg-neon px-8 py-3.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] hover:scale-[1.02] active:scale-95 disabled:opacity-70"
+            >
               Track Order
-            </button>
+            </LoadingButton>
             <Link
               to="/menu"
               className="rounded-full border border-white/20 px-8 py-3.5 text-sm font-semibold text-foreground hover:bg-white/5 transition-colors"
@@ -154,6 +165,7 @@ function OrderConfirmationPage() {
         }
       `}</style>
     </div>
+    </PageTransition>
   );
 }
 

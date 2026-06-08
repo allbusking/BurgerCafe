@@ -1,6 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Eye, EyeOff, Flame, Mail, Lock, User } from "lucide-react";
+import { Check, Eye, EyeOff, Flame, Mail, Lock, User } from "lucide-react";
+import { LoadingButton } from "@/components/LoadingButton";
+import { PageTransition } from "@/components/PageTransition";
+import { useAuthContext } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -18,8 +22,62 @@ function AuthPage() {
   const [tab, setTab] = useState<Tab>("signin");
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [errors, setErrors] = useState<Partial<typeof form>>({});
+  const { login, signup, loginWithGoogle } = useAuthContext();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+
+  const set = (key: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
+  };
+
+  const validate = () => {
+    const nextErrors: Partial<typeof form> = {};
+    if (tab === "signup" && form.name.trim().length < 2) {
+      nextErrors.name = "Name must be at least 2 characters";
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      nextErrors.email = "Enter a valid email";
+    }
+    if (form.password.length < 8) {
+      nextErrors.password = "Password must be at least 8 characters";
+    }
+    if (tab === "signup" && form.confirmPassword !== form.password) {
+      nextErrors.confirmPassword = "Passwords must match";
+    }
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      if (tab === "signin") {
+        await login(form.email, form.password);
+      } else {
+        await signup(form.email, form.password, form.name);
+      }
+      showToast("Signed in successfully", "success");
+      navigate({ to: "/" });
+    } catch {
+      showToast("Try Again", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
+    <PageTransition>
     <main className="relative min-h-screen bg-background text-foreground overflow-hidden">
       {/* Background grid + glow */}
       <div
@@ -38,7 +96,7 @@ function AuthPage() {
       />
 
       <div className="relative z-10 min-h-screen grid place-items-center px-4 py-16">
-        <div className="w-full max-w-[440px] glass-dark rounded-[2rem] p-8 md:p-10 shadow-2xl shadow-black/60 border border-white/5 animate-fade-in">
+        <div className="w-full max-w-[440px] glass-dark rounded-[1.25rem] sm:rounded-[2rem] p-5 sm:p-8 md:p-10 shadow-2xl shadow-black/60 border border-white/5 animate-fade-in">
           {/* Logo */}
           <Link to="/" className="flex items-center justify-center gap-1.5 mb-8">
             <span className="font-display text-4xl tracking-wide text-foreground leading-none">
@@ -67,12 +125,16 @@ function AuthPage() {
 
           {/* Forms */}
           {tab === "signin" ? (
-            <form className="space-y-4 animate-fade-in" onSubmit={(e) => e.preventDefault()}>
-              <Field icon={<Mail size={16} />} type="email" placeholder="Email address" />
+            <form className="space-y-4 animate-fade-in" onSubmit={submit}>
+              <Field icon={<Mail size={16} />} type="email" placeholder="Email address" value={form.email} onChange={(e) => set("email", e.target.value)} error={errors.email} valid={Boolean(form.email && !errors.email)} />
               <Field
                 icon={<Lock size={16} />}
                 type={showPw ? "text" : "password"}
                 placeholder="Password"
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+                error={errors.password}
+                valid={Boolean(form.password && !errors.password)}
                 right={
                   <button type="button" onClick={() => setShowPw((v) => !v)} className="text-foreground/50 hover:text-neon">
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -84,18 +146,25 @@ function AuthPage() {
                   Forgot Password?
                 </button>
               </div>
-              <button className="w-full rounded-full bg-neon py-3.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] hover:scale-[1.01]">
+              <LoadingButton
+                isLoading={submitting}
+                className="w-full rounded-full bg-neon py-3.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] hover:scale-[1.01] active:scale-95 disabled:opacity-70"
+              >
                 Sign In
-              </button>
+              </LoadingButton>
             </form>
           ) : (
-            <form className="space-y-4 animate-fade-in" onSubmit={(e) => e.preventDefault()}>
-              <Field icon={<User size={16} />} type="text" placeholder="Full Name" />
-              <Field icon={<Mail size={16} />} type="email" placeholder="Email address" />
+            <form className="space-y-4 animate-fade-in" onSubmit={submit}>
+              <Field icon={<User size={16} />} type="text" placeholder="Full Name" value={form.name} onChange={(e) => set("name", e.target.value)} error={errors.name} valid={Boolean(form.name && !errors.name)} />
+              <Field icon={<Mail size={16} />} type="email" placeholder="Email address" value={form.email} onChange={(e) => set("email", e.target.value)} error={errors.email} valid={Boolean(form.email && !errors.email)} />
               <Field
                 icon={<Lock size={16} />}
                 type={showPw ? "text" : "password"}
                 placeholder="Password"
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+                error={errors.password}
+                valid={Boolean(form.password && !errors.password)}
                 right={
                   <button type="button" onClick={() => setShowPw((v) => !v)} className="text-foreground/50 hover:text-neon">
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -106,15 +175,22 @@ function AuthPage() {
                 icon={<Lock size={16} />}
                 type={showConfirm ? "text" : "password"}
                 placeholder="Confirm Password"
+                value={form.confirmPassword}
+                onChange={(e) => set("confirmPassword", e.target.value)}
+                error={errors.confirmPassword}
+                valid={Boolean(form.confirmPassword && !errors.confirmPassword)}
                 right={
                   <button type="button" onClick={() => setShowConfirm((v) => !v)} className="text-foreground/50 hover:text-neon">
                     {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 }
               />
-              <button className="w-full rounded-full bg-neon py-3.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] hover:scale-[1.01]">
+              <LoadingButton
+                isLoading={submitting}
+                className="w-full rounded-full bg-neon py-3.5 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] hover:scale-[1.01] active:scale-95 disabled:opacity-70"
+              >
                 Create Account
-              </button>
+              </LoadingButton>
             </form>
           )}
 
@@ -126,7 +202,15 @@ function AuthPage() {
           </div>
 
           {/* Google */}
-          <button className="w-full flex items-center justify-center gap-3 rounded-full bg-white py-3 text-sm font-semibold text-black hover:bg-white/90 transition-colors">
+          <button
+            type="button"
+            onClick={async () => {
+              await loginWithGoogle();
+              showToast("Signed in with Google", "success");
+              navigate({ to: "/" });
+            }}
+            className="w-full flex items-center justify-center gap-3 rounded-full bg-white py-3 text-sm font-semibold text-black hover:bg-white/90 transition-colors"
+          >
             <GoogleIcon />
             Continue with Google
           </button>
@@ -140,25 +224,36 @@ function AuthPage() {
         </div>
       </div>
     </main>
+    </PageTransition>
   );
 }
 
 function Field({
   icon,
   right,
+  error,
+  valid,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & {
   icon: React.ReactNode;
   right?: React.ReactNode;
+  error?: string;
+  valid?: boolean;
 }) {
   return (
-    <div className="relative">
+    <div>
+      <div className="relative">
       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40">{icon}</span>
       <input
         {...props}
-        className="w-full rounded-2xl bg-white/[0.04] border border-white/10 pl-11 pr-11 py-3.5 text-sm text-foreground placeholder:text-foreground/40 outline-none transition-colors focus:border-neon focus:bg-white/[0.06]"
+        className={[
+          "min-h-12 w-full rounded-2xl bg-white/[0.04] border pl-11 pr-11 py-3.5 text-sm text-foreground placeholder:text-foreground/40 outline-none transition-colors focus:border-neon focus:bg-white/[0.06]",
+          error ? "border-red-500" : valid ? "border-emerald-500" : "border-white/10",
+        ].join(" ")}
       />
-      {right && <span className="absolute right-4 top-1/2 -translate-y-1/2">{right}</span>}
+      {right ? <span className="absolute right-4 top-1/2 -translate-y-1/2">{right}</span> : valid ? <Check className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" /> : null}
+      </div>
+      {error && <p className="mt-1.5 animate-fade-in text-xs text-red-500">{error}</p>}
     </div>
   );
 }

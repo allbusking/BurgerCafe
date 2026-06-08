@@ -1,9 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Star, Check, Plus } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { cartStore } from "@/lib/cart-store";
+import { useCartContext } from "@/context/CartContext";
+import { EmptyState } from "@/components/EmptyStates";
+import { LoadingButton } from "@/components/LoadingButton";
+import { PageTransition } from "@/components/PageTransition";
+import { ProductCardSkeleton } from "@/components/SkeletonLoaders";
+import { ScrollReveal } from "@/components/ScrollReveal";
+import { useToast } from "@/context/ToastContext";
+import categoryBurgerImg from "@/assets/category-burger.jpg";
+import categoryBubbleTeaImg from "@/assets/category-bubbletea.jpg";
+import categoryCoffeeImg from "@/assets/category-coffee.jpg";
+import categoryShawarmaImg from "@/assets/category-shawarma.jpg";
+import productBeefShawarmaImg from "@/assets/product-beef-shawarma.jpg";
+import productOreoCoffeeImg from "@/assets/product-oreo-coffee.jpg";
+import productShawarmaImg from "@/assets/product-shawarma.jpg";
+import productSmashBurgerImg from "@/assets/product-smash-burger.jpg";
+import productTaroBobaImg from "@/assets/product-taro-boba.jpg";
+import productTowerBurgerImg from "@/assets/product-tower-burger.jpg";
 
 export const Route = createFileRoute("/menu")({
   head: () => ({
@@ -43,6 +59,7 @@ interface Product {
   rating: number;
   reviews: number;
   badge: Badge;
+  image?: string;
 }
 
 const CATEGORY_GRADIENTS: Record<Category, string> = {
@@ -54,46 +71,55 @@ const CATEGORY_GRADIENTS: Record<Category, string> = {
   Combos: "from-lime-500 via-emerald-600 to-teal-800",
 };
 
+const CATEGORY_IMAGES: Record<Category, string> = {
+  Burgers: categoryBurgerImg,
+  Shawarma: categoryShawarmaImg,
+  "Bubble Tea": categoryBubbleTeaImg,
+  Coffee: categoryCoffeeImg,
+  "Cold Coffee": productOreoCoffeeImg,
+  Combos: productTowerBurgerImg,
+};
+
 const PRODUCTS: Product[] = [
   // Burgers
-  { id: "b1", name: "Smash Double Burger", price: 349, category: "Burgers", description: "Two smashed patties, melted cheese, secret sauce.", rating: 4.9, reviews: 412, badge: "BESTSELLER" },
-  { id: "b2", name: "Tower Burger", price: 399, category: "Burgers", description: "Triple-stack legend. Built to topple hunger.", rating: 4.8, reviews: 287, badge: "BESTSELLER" },
-  { id: "b3", name: "Crispy Chicken Burger", price: 299, category: "Burgers", description: "Buttermilk-fried chicken, slaw, pickles.", rating: 4.7, reviews: 198, badge: null },
-  { id: "b4", name: "BBQ Bacon Burger", price: 379, category: "Burgers", description: "Smoky BBQ glaze, crispy bacon, cheddar.", rating: 4.8, reviews: 156, badge: "NEW" },
-  { id: "b5", name: "Mushroom Swiss Burger", price: 329, category: "Burgers", description: "Sautéed mushrooms, Swiss cheese, truffle aioli.", rating: 4.6, reviews: 122, badge: null },
-  { id: "b6", name: "Spicy Jalapeño Burger", price: 319, category: "Burgers", description: "Pickled jalapeños, pepper jack, chipotle mayo.", rating: 4.7, reviews: 143, badge: "SPICY 🌶️" },
+  { id: "b1", name: "Smash Double Burger", price: 349, category: "Burgers", description: "Two smashed patties, melted cheese, secret sauce.", rating: 4.9, reviews: 412, badge: "BESTSELLER", image: productSmashBurgerImg },
+  { id: "b2", name: "Tower Burger", price: 399, category: "Burgers", description: "Triple-stack legend. Built to topple hunger.", rating: 4.8, reviews: 287, badge: "BESTSELLER", image: productTowerBurgerImg },
+  { id: "b3", name: "Crispy Chicken Burger", price: 299, category: "Burgers", description: "Buttermilk-fried chicken, slaw, pickles.", rating: 4.7, reviews: 198, badge: null, image: categoryBurgerImg },
+  { id: "b4", name: "BBQ Bacon Burger", price: 379, category: "Burgers", description: "Smoky BBQ glaze, crispy bacon, cheddar.", rating: 4.8, reviews: 156, badge: "NEW", image: productSmashBurgerImg },
+  { id: "b5", name: "Mushroom Swiss Burger", price: 329, category: "Burgers", description: "Sautéed mushrooms, Swiss cheese, truffle aioli.", rating: 4.6, reviews: 122, badge: null, image: categoryBurgerImg },
+  { id: "b6", name: "Spicy Jalapeño Burger", price: 319, category: "Burgers", description: "Pickled jalapeños, pepper jack, chipotle mayo.", rating: 4.7, reviews: 143, badge: "SPICY 🌶️", image: productTowerBurgerImg },
 
   // Shawarma
-  { id: "s1", name: "Classic Chicken Shawarma", price: 249, category: "Shawarma", description: "Marinated chicken, garlic sauce, fresh wrap.", rating: 4.8, reviews: 356, badge: "BESTSELLER" },
-  { id: "s2", name: "Beef Cheese Shawarma", price: 289, category: "Shawarma", description: "Slow-cooked beef with melted cheese inside.", rating: 4.7, reviews: 189, badge: null },
-  { id: "s3", name: "Garlic Chicken Shawarma", price: 269, category: "Shawarma", description: "Loaded with creamy garlic toum.", rating: 4.8, reviews: 211, badge: null },
-  { id: "s4", name: "Double Meat Shawarma", price: 319, category: "Shawarma", description: "Twice the meat. Same hand-rolled magic.", rating: 4.9, reviews: 178, badge: "NEW" },
+  { id: "s1", name: "Classic Chicken Shawarma", price: 249, category: "Shawarma", description: "Marinated chicken, garlic sauce, fresh wrap.", rating: 4.8, reviews: 356, badge: "BESTSELLER", image: productShawarmaImg },
+  { id: "s2", name: "Beef Cheese Shawarma", price: 289, category: "Shawarma", description: "Slow-cooked beef with melted cheese inside.", rating: 4.7, reviews: 189, badge: null, image: productBeefShawarmaImg },
+  { id: "s3", name: "Garlic Chicken Shawarma", price: 269, category: "Shawarma", description: "Loaded with creamy garlic toum.", rating: 4.8, reviews: 211, badge: null, image: categoryShawarmaImg },
+  { id: "s4", name: "Double Meat Shawarma", price: 319, category: "Shawarma", description: "Twice the meat. Same hand-rolled magic.", rating: 4.9, reviews: 178, badge: "NEW", image: productBeefShawarmaImg },
 
   // Bubble Tea
-  { id: "t1", name: "Taro Bubble Tea", price: 199, category: "Bubble Tea", description: "Creamy taro with chewy tapioca pearls.", rating: 4.9, reviews: 504, badge: "BESTSELLER" },
-  { id: "t2", name: "Brown Sugar Milk Tea", price: 189, category: "Bubble Tea", description: "Caramelized brown sugar syrup, milk, pearls.", rating: 4.8, reviews: 421, badge: "BESTSELLER" },
-  { id: "t3", name: "Matcha Latte", price: 209, category: "Bubble Tea", description: "Ceremonial matcha whisked with creamy milk.", rating: 4.7, reviews: 267, badge: null },
-  { id: "t4", name: "Strawberry Burst", price: 179, category: "Bubble Tea", description: "Real strawberries, popping boba bursts.", rating: 4.6, reviews: 198, badge: null },
-  { id: "t5", name: "Thai Milk Tea", price: 189, category: "Bubble Tea", description: "Classic Thai tea blend, condensed milk.", rating: 4.7, reviews: 223, badge: null },
-  { id: "t6", name: "Mango Passion", price: 195, category: "Bubble Tea", description: "Tropical mango & passionfruit explosion.", rating: 4.8, reviews: 187, badge: "NEW" },
+  { id: "t1", name: "Taro Bubble Tea", price: 199, category: "Bubble Tea", description: "Creamy taro with chewy tapioca pearls.", rating: 4.9, reviews: 504, badge: "BESTSELLER", image: productTaroBobaImg },
+  { id: "t2", name: "Brown Sugar Milk Tea", price: 189, category: "Bubble Tea", description: "Caramelized brown sugar syrup, milk, pearls.", rating: 4.8, reviews: 421, badge: "BESTSELLER", image: categoryBubbleTeaImg },
+  { id: "t3", name: "Matcha Latte", price: 209, category: "Bubble Tea", description: "Ceremonial matcha whisked with creamy milk.", rating: 4.7, reviews: 267, badge: null, image: productTaroBobaImg },
+  { id: "t4", name: "Strawberry Burst", price: 179, category: "Bubble Tea", description: "Real strawberries, popping boba bursts.", rating: 4.6, reviews: 198, badge: null, image: categoryBubbleTeaImg },
+  { id: "t5", name: "Thai Milk Tea", price: 189, category: "Bubble Tea", description: "Classic Thai tea blend, condensed milk.", rating: 4.7, reviews: 223, badge: null, image: productTaroBobaImg },
+  { id: "t6", name: "Mango Passion", price: 195, category: "Bubble Tea", description: "Tropical mango & passionfruit explosion.", rating: 4.8, reviews: 187, badge: "NEW", image: categoryBubbleTeaImg },
 
   // Coffee
-  { id: "c1", name: "Espresso", price: 99, category: "Coffee", description: "Bold double shot. Pure intensity.", rating: 4.7, reviews: 134, badge: null },
-  { id: "c2", name: "Cappuccino", price: 149, category: "Coffee", description: "Velvety microfoam over espresso.", rating: 4.8, reviews: 298, badge: null },
-  { id: "c3", name: "Flat White", price: 159, category: "Coffee", description: "Silky milk, double ristretto base.", rating: 4.8, reviews: 187, badge: null },
-  { id: "c4", name: "Americano", price: 119, category: "Coffee", description: "Espresso lengthened with hot water.", rating: 4.6, reviews: 112, badge: null },
+  { id: "c1", name: "Espresso", price: 99, category: "Coffee", description: "Bold double shot. Pure intensity.", rating: 4.7, reviews: 134, badge: null, image: categoryCoffeeImg },
+  { id: "c2", name: "Cappuccino", price: 149, category: "Coffee", description: "Velvety microfoam over espresso.", rating: 4.8, reviews: 298, badge: null, image: categoryCoffeeImg },
+  { id: "c3", name: "Flat White", price: 159, category: "Coffee", description: "Silky milk, double ristretto base.", rating: 4.8, reviews: 187, badge: null, image: productOreoCoffeeImg },
+  { id: "c4", name: "Americano", price: 119, category: "Coffee", description: "Espresso lengthened with hot water.", rating: 4.6, reviews: 112, badge: null, image: categoryCoffeeImg },
 
   // Cold Coffee
-  { id: "cc1", name: "Oreo Cold Coffee", price: 179, category: "Cold Coffee", description: "Oreo crumble blended with cold brew.", rating: 4.9, reviews: 389, badge: "BESTSELLER" },
-  { id: "cc2", name: "Caramel Cold Coffee", price: 169, category: "Cold Coffee", description: "Buttery caramel meets bold cold brew.", rating: 4.7, reviews: 234, badge: null },
-  { id: "cc3", name: "Hazelnut Cold Coffee", price: 179, category: "Cold Coffee", description: "Nutty hazelnut syrup, ice-cold finish.", rating: 4.8, reviews: 198, badge: null },
-  { id: "cc4", name: "Classic Cold Coffee", price: 149, category: "Cold Coffee", description: "Our OG iced coffee. Always reliable.", rating: 4.7, reviews: 312, badge: null },
+  { id: "cc1", name: "Oreo Cold Coffee", price: 179, category: "Cold Coffee", description: "Oreo crumble blended with cold brew.", rating: 4.9, reviews: 389, badge: "BESTSELLER", image: productOreoCoffeeImg },
+  { id: "cc2", name: "Caramel Cold Coffee", price: 169, category: "Cold Coffee", description: "Buttery caramel meets bold cold brew.", rating: 4.7, reviews: 234, badge: null, image: productOreoCoffeeImg },
+  { id: "cc3", name: "Hazelnut Cold Coffee", price: 179, category: "Cold Coffee", description: "Nutty hazelnut syrup, ice-cold finish.", rating: 4.8, reviews: 198, badge: null, image: categoryCoffeeImg },
+  { id: "cc4", name: "Classic Cold Coffee", price: 149, category: "Cold Coffee", description: "Our OG iced coffee. Always reliable.", rating: 4.7, reviews: 312, badge: null, image: productOreoCoffeeImg },
 
   // Combos
-  { id: "co1", name: "Burger + Bubble Tea Combo", price: 499, category: "Combos", description: "Any burger paired with any bubble tea.", rating: 4.9, reviews: 267, badge: "BESTSELLER" },
-  { id: "co2", name: "Shawarma + Cold Coffee Combo", price: 399, category: "Combos", description: "Shawarma + any cold coffee. Sorted.", rating: 4.8, reviews: 189, badge: null },
-  { id: "co3", name: "Double Trouble", price: 749, category: "Combos", description: "2 burgers + 2 drinks. For two.", rating: 4.9, reviews: 156, badge: "NEW" },
-  { id: "co4", name: "Family Feast", price: 999, category: "Combos", description: "4 items, endless joy. Feed the crew.", rating: 4.9, reviews: 134, badge: "NEW" },
+  { id: "co1", name: "Burger + Bubble Tea Combo", price: 499, category: "Combos", description: "Any burger paired with any bubble tea.", rating: 4.9, reviews: 267, badge: "BESTSELLER", image: productSmashBurgerImg },
+  { id: "co2", name: "Shawarma + Cold Coffee Combo", price: 399, category: "Combos", description: "Shawarma + any cold coffee. Sorted.", rating: 4.8, reviews: 189, badge: null, image: productShawarmaImg },
+  { id: "co3", name: "Double Trouble", price: 749, category: "Combos", description: "2 burgers + 2 drinks. For two.", rating: 4.9, reviews: 156, badge: "NEW", image: productTowerBurgerImg },
+  { id: "co4", name: "Family Feast", price: 999, category: "Combos", description: "4 items, endless joy. Feed the crew.", rating: 4.9, reviews: 134, badge: "NEW", image: categoryBurgerImg },
 ];
 
 const FILTERS: Array<"All" | Category> = [
@@ -115,7 +141,11 @@ const BADGE_STYLES: Record<Exclude<Badge, null>, string> = {
 function MenuPage() {
   const [active, setActive] = useState<(typeof FILTERS)[number]>("All");
   const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState<Record<string, boolean>>({});
   const [added, setAdded] = useState<Record<string, boolean>>({});
+  const { addItem } = useCartContext();
+  const { showToast } = useToast();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -130,13 +160,31 @@ function MenuPage() {
     });
   }, [active, query]);
 
+  useEffect(() => {
+    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(false), 420);
+    return () => window.clearTimeout(timer);
+  }, [active, query]);
+
   const handleAdd = (p: Product) => {
-    cartStore.add({ id: p.id, name: p.name, category: p.category, price: p.price });
-    setAdded((s) => ({ ...s, [p.id]: true }));
-    setTimeout(() => setAdded((s) => ({ ...s, [p.id]: false })), 1400);
+    setAdding((s) => ({ ...s, [p.id]: true }));
+    addItem({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      price: p.price,
+      image: p.image ?? CATEGORY_IMAGES[p.category],
+    });
+    showToast("Item added to cart! 🍔", "success");
+    window.setTimeout(() => {
+      setAdding((s) => ({ ...s, [p.id]: false }));
+      setAdded((s) => ({ ...s, [p.id]: true }));
+      window.setTimeout(() => setAdded((s) => ({ ...s, [p.id]: false })), 1200);
+    }, 300);
   };
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
@@ -159,7 +207,7 @@ function MenuPage() {
       </section>
 
       {/* STICKY FILTER + SEARCH BAR */}
-      <div className="sticky top-16 md:top-20 z-40 glass-dark border-y border-white/10">
+      <div className="sticky top-0 z-[55] border-y border-white/10 bg-background/90 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
         <div className="mx-auto max-w-7xl px-4 py-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
           {/* Filters */}
           <div className="flex-1 -mx-1 overflow-x-auto">
@@ -203,33 +251,55 @@ function MenuPage() {
 
       {/* PRODUCT GRID */}
       <section className="mx-auto max-w-7xl px-4 py-12 md:py-16">
-        {filtered.length === 0 ? (
-          <div className="text-center py-24">
-            <p className="font-display text-4xl text-muted-foreground">
-              NOTHING MATCHES.
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Try a different search or filter.
-            </p>
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div>
+            <EmptyState
+              title={query.trim() ? `No results for "${query.trim()}"` : "Nothing matches"}
+              description="Try another search, switch categories, or reset the menu to browse everything."
+              icon="search"
+            />
+            <div className="-mt-12 flex justify-center">
+              <button
+                onClick={() => {
+                  setActive("All");
+                  setQuery("");
+                }}
+                className="rounded-full bg-neon px-6 py-3 text-sm font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.5)] active:scale-95"
+              >
+                Reset Menu
+              </button>
+            </div>
           </div>
         ) : (
           <div
             key={`${active}-${query}`}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6"
           >
             {filtered.map((p, i) => (
+              <ScrollReveal key={p.id} delay={Math.min(i * 45, 360)}>
               <article
                 key={p.id}
-                className="group relative rounded-3xl bg-[#1A1A1A] border border-white/5 overflow-hidden flex flex-col opacity-0 animate-fade-in hover:border-neon/40 hover:shadow-[0_10px_40px_-10px_rgba(200,241,53,0.3)] transition-all duration-500"
-                style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}
+                className="group relative rounded-2xl bg-[#1A1A1A] border border-white/5 overflow-hidden flex flex-col hover:-translate-y-2 hover:border-neon/40 hover:shadow-[0_10px_40px_-10px_rgba(200,241,53,0.3)] transition-all duration-500 sm:rounded-3xl"
               >
                 {/* Image placeholder */}
                 <div
                   className={`relative aspect-square w-full bg-gradient-to-br ${CATEGORY_GRADIENTS[p.category]} overflow-hidden`}
                 >
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.25),transparent_60%)]" />
-                  <div className="absolute inset-0 grid place-items-center">
-                    <span className="font-display text-7xl text-white/15 tracking-wider">
+                  <img
+                    src={p.image ?? CATEGORY_IMAGES[p.category]}
+                    alt={p.name}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.5),transparent_55%),radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.25),transparent_60%)]" />
+                  <div className="absolute inset-0 grid place-items-center mix-blend-overlay">
+                    <span className="font-display text-3xl text-white/15 tracking-wider sm:text-7xl">
                       {p.category.split(" ")[0].toUpperCase()}
                     </span>
                   </div>
@@ -243,19 +313,19 @@ function MenuPage() {
                 </div>
 
                 {/* Body */}
-                <div className="p-5 flex flex-col gap-2 flex-1">
+                <div className="p-3 sm:p-5 flex flex-col gap-2 flex-1">
                   <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
                     {p.category}
                   </span>
-                  <h3 className="font-body text-lg font-bold text-foreground leading-tight">
+                  <h3 className="font-body text-sm font-bold text-foreground leading-tight sm:text-lg">
                     {p.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-xs text-muted-foreground line-clamp-2 sm:text-sm">
                     {p.description}
                   </p>
 
                   <div className="flex items-center justify-between mt-2">
-                    <span className="font-display text-3xl text-neon">
+                    <span className="font-display text-2xl text-neon sm:text-3xl">
                       ₹{p.price}
                     </span>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -268,10 +338,11 @@ function MenuPage() {
                   </div>
 
                   {/* Add to cart */}
-                  <button
+                  <LoadingButton
+                    isLoading={adding[p.id]}
                     onClick={() => handleAdd(p)}
                     className={[
-                      "mt-4 w-full rounded-full py-3 text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2",
+                      "mt-4 w-full rounded-full py-3 text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 sm:text-sm",
                       added[p.id]
                         ? "bg-emerald-500 text-black"
                         : "bg-neon text-black hover:shadow-[0_0_24px_rgba(200,241,53,0.55)] hover:scale-[1.02]",
@@ -288,9 +359,10 @@ function MenuPage() {
                         <Plus size={16} strokeWidth={3} />
                       </>
                     )}
-                  </button>
+                  </LoadingButton>
                 </div>
               </article>
+              </ScrollReveal>
             ))}
           </div>
         )}
@@ -298,5 +370,6 @@ function MenuPage() {
 
       <Footer />
     </div>
+    </PageTransition>
   );
 }

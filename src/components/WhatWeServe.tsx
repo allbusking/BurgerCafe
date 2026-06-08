@@ -1,8 +1,10 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import burgerImg from "@/assets/category-burger.jpg";
 import shawarmaImg from "@/assets/category-shawarma.jpg";
 import bubbleteaImg from "@/assets/category-bubbletea.jpg";
 import coffeeImg from "@/assets/category-coffee.jpg";
+import { ScrollReveal } from "@/components/ScrollReveal";
 
 const categories = [
   {
@@ -67,12 +69,11 @@ export function WhatWeServe() {
         {/* Cards */}
         <div className="grid snap-x snap-mandatory auto-cols-[85%] grid-flow-col gap-5 overflow-x-auto pb-6 md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:overflow-visible lg:grid-cols-4">
           {categories.map((cat, i) => (
+            <ScrollReveal key={cat.title} className="snap-center" delay={i * 80}>
             <div
-              key={cat.title}
-              className="group relative flex snap-center flex-col overflow-hidden rounded-3xl transition-all duration-500 hover:-translate-y-2"
+              className="group relative flex snap-center flex-col justify-end overflow-hidden rounded-3xl transition-all duration-500 hover:-translate-y-2"
               style={{
-                minHeight: "480px",
-                animationDelay: `${i * 0.12}s`,
+                minHeight: "520px",
               }}
             >
               {/* Background */}
@@ -86,20 +87,22 @@ export function WhatWeServe() {
                 }}
               />
 
-              {/* Image */}
-              <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
+              {/* Image layer */}
+              <div className="absolute inset-x-0 top-0 h-[68%] overflow-hidden [mask-image:linear-gradient(to_bottom,black_0%,black_68%,transparent_100%)]">
                 <img
                   src={cat.image}
                   alt={cat.title}
                   width={1024}
                   height={1024}
                   loading="lazy"
-                  className="h-auto max-h-[200px] w-auto max-w-[80%] object-contain transition-transform duration-700 group-hover:scale-110"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
+                <div className={`absolute inset-0 ${cat.bgClass} opacity-35 mix-blend-multiply`} />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_22%,rgba(255,255,255,0.22),transparent_34%)]" />
               </div>
 
               {/* Content */}
-              <div className="relative z-10 flex flex-col gap-2 p-6 pt-0">
+              <div className="relative z-10 flex min-h-[45%] flex-col justify-end gap-2 p-6 pt-28">
                 <span
                   className="inline-flex w-fit items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider"
                   style={{
@@ -120,27 +123,28 @@ export function WhatWeServe() {
                   {cat.subtitle}
                 </p>
 
-                <a
-                  href="#"
+                <Link
+                  to="/menu"
                   className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold uppercase tracking-wider transition-all duration-300 group-hover:gap-3"
                   style={{ color: cat.accentColor }}
                 >
                   Explore <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </div>
             </div>
+            </ScrollReveal>
           ))}
         </div>
 
         {/* CTA */}
         <div className="mt-14 flex justify-center">
-          <a
-            href="#full-menu"
-            className="group inline-flex items-center gap-2.5 rounded-full bg-background px-8 py-4 text-sm font-bold uppercase tracking-wider text-cream transition-all duration-300 hover:bg-charcoal hover:shadow-[0_0_30px_rgba(200,241,53,0.3)]"
+          <Link
+            to="/menu"
+            className="group inline-flex items-center gap-2.5 rounded-full bg-neon px-8 py-4 text-sm font-bold uppercase tracking-wider text-background transition-all duration-300 hover:shadow-[0_0_30px_rgba(200,241,53,0.4)] active:scale-95"
           >
             See Full Menu
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>

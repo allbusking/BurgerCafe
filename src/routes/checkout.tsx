@@ -1,15 +1,29 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Lock, ShieldCheck } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import {
-  cartStore,
-  computeTotals,
-  useCart,
-  useDeliveryMode,
-} from "@/lib/cart-store";
+import { useCartContext } from "@/context/CartContext";
+import { LoadingButton } from "@/components/LoadingButton";
+import { PageTransition } from "@/components/PageTransition";
+import { useToast } from "@/context/ToastContext";
+
+function computeTotals(
+  items: { price: number; qty: number }[],
+  mode: "Delivery" | "Pickup"
+) {
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const delivery =
+    mode === "Pickup"
+      ? 0
+      : subtotal >= 499 || subtotal === 0
+        ? 0
+        : 40;
+  const gst = Math.round(subtotal * 0.05);
+  const total = subtotal + delivery + gst;
+  return { subtotal, delivery, gst, total };
+}
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -26,7 +40,7 @@ const baseSchema = {
   phone: z
     .string()
     .trim()
-    .regex(/^[+]?[\d\s-]{7,15}$/, "Enter a valid phone number"),
+    .regex(/^\d{10}$/, "Enter exactly 10 digits"),
   email: z.string().trim().email("Enter a valid email").max(255),
   instructions: z.string().trim().max(500).optional().or(z.literal("")),
 };
@@ -53,10 +67,10 @@ type FormState = {
 };
 
 function CheckoutPage() {
-  const items = useCart();
-  const mode = useDeliveryMode();
-  const totals = computeTotals(items, mode);
+  const { items, deliveryMode, clearCart } = useCartContext();
+  const totals = computeTotals(items, deliveryMode);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -68,27 +82,12 @@ function CheckoutPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (items.length === 0) navigate({ to: "/menu" });
+  }, [items.length, navigate]);
+
   if (items.length === 0) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        <Navbar />
-        <main className="flex-1 grid place-items-center pt-32 pb-16 text-center px-4">
-          <div>
-            <h1 className="font-display text-5xl">NOTHING TO CHECK OUT</h1>
-            <p className="mt-2 text-muted-foreground">
-              Your cart is empty.
-            </p>
-            <Link
-              to="/menu"
-              className="mt-6 inline-flex rounded-full bg-neon px-6 py-3 text-sm font-bold text-black"
-            >
-              Browse Menu
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+    return null;
   }
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => {
@@ -98,7 +97,7 @@ function CheckoutPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const schema = mode === "Delivery" ? deliverySchema : pickupSchema;
+    const schema = deliveryMode === "Delivery" ? deliverySchema : pickupSchema;
     const result = schema.safeParse(form);
     if (!result.success) {
       const errs: Partial<Record<keyof FormState, string>> = {};
@@ -114,21 +113,38 @@ function CheckoutPage() {
       const orderId = `HOT-2024-${String(Math.floor(1000 + Math.random() * 9000))}`;
       const order = {
         id: orderId,
-        items: items.map((i) => ({ id: i.id, name: i.name, qty: i.qty, price: i.price })),
+        items: items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          category: i.category,
+          quantity: i.quantity,
+          qty: i.qty,
+          price: i.price,
+          image: i.image,
+        })),
         total: totals.total,
-        address: mode === "Delivery" ? form.address : undefined,
-        mode,
+        address: deliveryMode === "Delivery" ? form.address : undefined,
+        mode: deliveryMode,
+        status: "Pending",
         createdAt: new Date().toISOString(),
       };
       try {
         localStorage.setItem("hotbb-last-order", JSON.stringify(order));
+        const rawOrders = localStorage.getItem("hotbb-orders-v1");
+        const orders = rawOrders ? JSON.parse(rawOrders) : [];
+        localStorage.setItem(
+          "hotbb-orders-v1",
+          JSON.stringify([order, ...orders].slice(0, 20)),
+        );
       } catch {}
-      cartStore.clear();
+      clearCart();
+      showToast("Order placed successfully! 🎉", "success");
       navigate({ to: "/order-confirmation" });
     }, 1200);
   };
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
 
@@ -171,7 +187,7 @@ function CheckoutPage() {
                 error={errors.email}
                 placeholder="you@example.com"
               />
-              {mode === "Delivery" && (
+              {deliveryMode === "Delivery" && (
                 <Field
                   label="Delivery Address"
                   multiline
@@ -198,7 +214,7 @@ function CheckoutPage() {
                   ORDER SUMMARY
                 </h2>
                 <span className="inline-block text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-muted-foreground">
-                  {mode}
+                  {deliveryMode}
                 </span>
 
                 <ul className="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -255,13 +271,13 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                <button
+                <LoadingButton
                   type="submit"
-                  disabled={submitting}
-                  className="w-full rounded-full bg-neon py-5 text-base font-extrabold text-black transition-all duration-300 hover:shadow-[0_0_28px_rgba(200,241,53,0.6)] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+                  isLoading={submitting}
+                  className="fixed bottom-4 left-4 right-4 z-50 rounded-full bg-neon py-5 text-base font-extrabold text-black transition-all duration-300 hover:shadow-[0_0_28px_rgba(200,241,53,0.6)] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed lg:static lg:w-full"
                 >
-                  {submitting ? "Processing..." : `Place Order & Pay ₹${totals.total}`}
-                </button>
+                  Place Order & Pay ₹{totals.total}
+                </LoadingButton>
 
                 <p className="text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
                   <Lock size={11} /> 100% Secure • Powered by Razorpay
@@ -274,6 +290,7 @@ function CheckoutPage() {
 
       <Footer />
     </div>
+    </PageTransition>
   );
 }
 
@@ -304,7 +321,7 @@ function Field({
   multiline?: boolean;
 }) {
   const base =
-    "w-full rounded-xl bg-white/5 border px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:bg-white/10";
+    "min-h-12 w-full rounded-xl bg-white/5 border px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:bg-white/10";
   const border = error
     ? "border-red-500 focus:border-red-500"
     : "border-white/10 focus:border-neon";

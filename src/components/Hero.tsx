@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowRight, Star, Zap } from "lucide-react";
 import heroBurger from "@/assets/hero-burger.png";
 
@@ -33,19 +34,19 @@ export function Hero() {
           </p>
 
           <div className="animate-slide-up mt-8 flex flex-wrap items-center gap-4" style={{ animationDelay: "0.9s" }}>
-            <a
-              href="#menu"
+            <Link
+              to="/menu"
               className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-all duration-300 hover:shadow-neon hover:-translate-y-0.5"
             >
               Explore Menu
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </a>
-            <a
-              href="#about"
+            </Link>
+            <Link
+              to="/about"
               className="inline-flex items-center gap-2 rounded-full border border-cream/40 px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-cream transition-all duration-300 hover:border-cream hover:bg-cream hover:text-background"
             >
               Our Story
-            </a>
+            </Link>
           </div>
 
           <div className="animate-slide-up mt-6 flex items-center gap-2 text-xs text-muted-foreground" style={{ animationDelay: "1.05s" }}>

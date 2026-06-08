@@ -18,6 +18,9 @@ import {
   Clock,
   IndianRupee,
 } from "lucide-react";
+import { LoadingButton } from "@/components/LoadingButton";
+import { PageTransition } from "@/components/PageTransition";
+import { useAuthContext } from "@/context/AuthContext";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -30,31 +33,24 @@ type Section = "dashboard" | "orders" | "menu" | "add" | "customers" | "settings
 
 function AdminPage() {
   const [section, setSection] = useState<Section>("dashboard");
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const navigate = useNavigate();
+  const { isAdmin, isLoading } = useAuthContext();
 
   useEffect(() => {
-    // Demo role gate: default to admin so dashboard is viewable.
-    let role = localStorage.getItem("hotbb-role");
-    if (!role) {
-      role = "admin";
-      localStorage.setItem("hotbb-role", "admin");
-    }
-    if (role !== "admin") {
+    if (!isLoading && !isAdmin) {
       navigate({ to: "/" });
-    } else {
-      setAuthorized(true);
     }
-  }, [navigate]);
+  }, [isAdmin, isLoading, navigate]);
 
-  if (!authorized) return null;
+  if (isLoading || !isAdmin) return null;
 
   return (
+    <PageTransition>
     <div className="min-h-screen flex bg-[#111111] text-foreground">
       <Sidebar section={section} setSection={setSection} />
-      <main className="flex-1 ml-[260px] min-h-screen">
+      <main className="flex-1 min-h-screen pb-24 md:ml-[260px] md:pb-0">
         <TopBar section={section} />
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           {section === "dashboard" && <Dashboard />}
           {section === "orders" && <Orders />}
           {section === "menu" && <MenuItems />}
@@ -64,6 +60,7 @@ function AdminPage() {
         </div>
       </main>
     </div>
+    </PageTransition>
   );
 }
 
@@ -81,13 +78,13 @@ const NAV: { id: Section; label: string; icon: typeof LayoutDashboard; emoji: st
 function Sidebar({ section, setSection }: { section: Section; setSection: (s: Section) => void }) {
   const navigate = useNavigate();
   return (
-    <aside className="fixed inset-y-0 left-0 w-[260px] bg-[#0D0D0D] border-r border-white/5 flex flex-col z-40">
-      <div className="px-6 py-6 flex items-center gap-2 border-b border-white/5">
+    <aside className="fixed inset-x-0 bottom-0 md:inset-y-0 md:left-0 md:w-[260px] bg-[#0D0D0D] border-t md:border-t-0 md:border-r border-white/5 flex flex-col z-40">
+      <div className="hidden px-4 md:px-6 py-4 md:py-6 md:flex items-center gap-2 border-b border-white/5">
         <Flame size={18} className="text-neon" strokeWidth={2.5} />
         <span className="font-display text-xl tracking-wide text-neon leading-none">HOT B&B ADMIN</span>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex md:flex-1 gap-1 md:block px-2 md:px-3 py-2 md:py-4 md:space-y-1 overflow-x-auto md:overflow-y-auto">
         {NAV.map((n) => {
           const active = section === n.id;
           return (
@@ -95,7 +92,7 @@ function Sidebar({ section, setSection }: { section: Section; setSection: (s: Se
               key={n.id}
               onClick={() => setSection(n.id)}
               className={[
-                "relative w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                "relative flex md:w-full shrink-0 flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-4 py-2.5 rounded-lg text-[10px] md:text-sm font-medium transition-all",
                 active
                   ? "bg-white/[0.06] text-foreground"
                   : "text-foreground/60 hover:text-foreground hover:bg-white/[0.03]",
@@ -103,13 +100,13 @@ function Sidebar({ section, setSection }: { section: Section; setSection: (s: Se
             >
               {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-neon" />}
               <span className="text-base leading-none">{n.emoji}</span>
-              <span>{n.label}</span>
+              <span className="whitespace-nowrap">{n.label}</span>
             </button>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-white/5">
+      <div className="hidden md:block p-4 border-t border-white/5">
         <div className="flex items-center gap-3 mb-3">
           <div className="h-10 w-10 rounded-full bg-neon text-black grid place-items-center font-bold">
             A
@@ -144,14 +141,14 @@ function TopBar({ section }: { section: Section }) {
     settings: "Settings",
   };
   return (
-    <header className="h-16 px-8 border-b border-white/5 flex items-center justify-between bg-[#111111] sticky top-0 z-30">
+    <header className="h-16 px-4 md:px-8 border-b border-white/5 flex items-center justify-between bg-[#111111] md:sticky md:top-0 z-30">
       <div>
         <h1 className="font-display text-2xl tracking-wide leading-none">{titles[section]}</h1>
         <p className="text-xs text-foreground/40 mt-1">
           {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>
-      <div className="hidden md:flex items-center gap-2 text-xs text-foreground/50">
+      <div className="hidden sm:flex items-center gap-2 text-xs text-foreground/50">
         <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> System online
       </div>
     </header>
@@ -224,7 +221,7 @@ function StatCard({ label, value, accent, icon, trend }: { label: string; value:
 function Panel({ title, subtitle, children, action }: { title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <section className="rounded-2xl bg-[#161616] border border-white/5 overflow-hidden">
-      <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between gap-4">
+      <div className="px-4 md:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="font-semibold">{title}</h2>
           {subtitle && <p className="text-xs text-foreground/50 mt-0.5">{subtitle}</p>}
@@ -502,6 +499,7 @@ function AddProduct() {
   const [form, setForm] = useState({ name: "", category: "Burgers", price: "", description: "", available: true, featured: false });
   const [image, setImage] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const handleFile = (file: File) => {
     const r = new FileReader();
@@ -512,7 +510,15 @@ function AddProduct() {
   return (
     <div className="max-w-3xl">
       <form
-        onSubmit={(e) => { e.preventDefault(); setSaved(true); setTimeout(() => setSaved(false), 2400); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSaving(true);
+          window.setTimeout(() => {
+            setSaving(false);
+            setSaved(true);
+            window.setTimeout(() => setSaved(false), 2400);
+          }, 800);
+        }}
         className="rounded-2xl bg-[#161616] border border-white/5 p-6 md:p-8 space-y-5"
       >
         <Input label="Product Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Smash Double Burger" required />
@@ -559,9 +565,12 @@ function AddProduct() {
           ) : (
             <span className="text-xs text-foreground/40">Item will appear in your live menu</span>
           )}
-          <button className="rounded-full bg-neon px-6 py-3 text-sm font-bold text-black hover:shadow-[0_0_20px_rgba(200,241,53,0.4)] transition-all">
+          <LoadingButton
+            isLoading={saving}
+            className="rounded-full bg-neon px-6 py-3 text-sm font-bold text-black hover:shadow-[0_0_20px_rgba(200,241,53,0.4)] transition-all active:scale-95 disabled:opacity-70"
+          >
             Add to Menu
-          </button>
+          </LoadingButton>
         </div>
       </form>
     </div>
@@ -610,6 +619,7 @@ function Customers() {
   ];
   return (
     <Panel title="Customers" subtitle={`${data.length} active customers`}>
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-wider text-foreground/40 border-b border-white/5">
@@ -633,6 +643,7 @@ function Customers() {
           ))}
         </tbody>
       </table>
+      </div>
     </Panel>
   );
 }
