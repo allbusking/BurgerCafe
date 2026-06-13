@@ -1,8 +1,8 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { Menu, X, ShoppingCart, User, Flame } from "lucide-react";
-import { useCartContext } from "@/context/CartContext";
-import { useAuthContext } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 const NAV = [
   { label: "Home", to: "/" },
@@ -17,10 +17,17 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const lastScrollY = useRef(0);
-  const { getTotalItems } = useCartContext();
-  const { user, isLoggedIn, isAdmin, logout } = useAuthContext();
-  const cartCount = getTotalItems();
-  const initials = user?.name
+  const { totalItems } = useCart();
+  const { user, profile, isLoggedIn, isAdmin, logout } = useAuth();
+  const cartCount = totalItems;
+  const accountName =
+    profile?.full_name ||
+    profile?.name ||
+    (typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
+    (typeof user?.user_metadata?.name === "string" ? user.user_metadata.name : "") ||
+    user?.email ||
+    "HOT B&B Fan";
+  const initials = accountName
     .split(" ")
     .map((part) => part[0])
     .join("")
@@ -71,9 +78,7 @@ export function Navbar() {
             className={[
               "flex items-center justify-between gap-2 md:gap-4 rounded-full px-3 md:px-8 h-12 md:h-16",
               "transition-all duration-500",
-              scrolled
-                ? "glass-dark shadow-lg shadow-black/40"
-                : "bg-transparent",
+              scrolled ? "glass-dark shadow-lg shadow-black/40" : "bg-transparent",
             ].join(" ")}
           >
             {/* Logo */}
@@ -106,7 +111,10 @@ export function Navbar() {
             {/* Right Actions */}
             <div className="flex items-center gap-1.5 md:gap-3 ml-auto">
               {/* Cart */}
-              <Link to="/cart" className="relative grid h-9 md:h-10 w-9 md:w-10 place-items-center rounded-full glass hover:bg-white/10 transition-colors active:scale-95">
+              <Link
+                to="/cart"
+                className="relative grid h-9 md:h-10 w-9 md:w-10 place-items-center rounded-full glass hover:bg-white/10 transition-colors active:scale-95"
+              >
                 <ShoppingCart size={16} className="text-foreground md:size-5" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 grid h-4 md:h-5 min-w-4 md:min-w-[1.25rem] place-items-center rounded-full bg-neon text-[9px] md:text-[10px] font-bold text-black px-0.5 md:px-1 animate-badge-pulse">
@@ -141,6 +149,13 @@ export function Navbar() {
                         className="block rounded-xl px-3 py-2 text-sm text-foreground/80 hover:bg-white/5 hover:text-neon"
                       >
                         My Orders
+                      </Link>
+                      <Link
+                        to="/my-addresses"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block rounded-xl px-3 py-2 text-sm text-foreground/80 hover:bg-white/5 hover:text-neon"
+                      >
+                        My Addresses 🏠
                       </Link>
                       {isAdmin && (
                         <Link

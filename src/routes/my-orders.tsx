@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { RotateCcw } from "lucide-react";
 
 import { EmptyState } from "@/components/EmptyStates";
@@ -7,11 +7,10 @@ import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollReveal } from "@/components/ScrollReveal";
-import { useAuthContext } from "@/context/AuthContext";
-import { useCartContext } from "@/context/CartContext";
+import { useCart } from "../context/CartContext";
+import { useMyOrders } from "../hooks/useOrders";
 import { useToast } from "@/context/ToastContext";
-import { formatDate } from "@/utils/formatDate";
-import { formatPrice } from "@/utils/formatPrice";
+import { formatDate, formatPrice, getStatusColor, getStatusLabel } from "../utils/formatPrice";
 import { getProductImage } from "@/utils/productImages";
 
 export const Route = createFileRoute("/my-orders")({
@@ -24,53 +23,25 @@ export const Route = createFileRoute("/my-orders")({
   component: MyOrdersPage,
 });
 
-type OrderStatus = "Pending" | "Preparing" | "Ready" | "Delivered";
-
-interface SavedOrder {
+type OrderItem = {
   id: string;
-  createdAt: string;
-  total: number;
-  status?: OrderStatus;
-  items: {
-    id: string;
-    name: string;
-    category?: string;
-    qty?: number;
-    quantity?: number;
-    price: number;
-    image?: string;
-  }[];
-}
-
-const ORDERS_KEY = "hotbb-orders-v1";
-
-const STATUS_STYLES: Record<OrderStatus, string> = {
-  Pending: "bg-yellow-400/15 text-yellow-300 border-yellow-400/25",
-  Preparing: "bg-blue-400/15 text-blue-300 border-blue-400/25",
-  Ready: "bg-emerald-400/15 text-emerald-300 border-emerald-400/25",
-  Delivered: "bg-white/10 text-foreground/60 border-white/10",
+  name: string;
+  category?: string;
+  quantity?: number;
+  qty?: number;
+  price: number;
+  image?: string;
+  image_url?: string;
 };
 
-function MyOrdersPage() {
-  const { isLoggedIn, isLoading } = useAuthContext();
-  const { addToCart } = useCartContext();
+export function MyOrdersPage() {
+  const { orders, loading } = useMyOrders();
+  const { addToCart } = useCart();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isLoading && !isLoggedIn) navigate({ to: "/auth" });
-  }, [isLoading, isLoggedIn, navigate]);
-
-  const orders = useMemo<SavedOrder[]>(() => {
-    try {
-      const raw = localStorage.getItem(ORDERS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  }, []);
-
-  if (isLoading || !isLoggedIn) return null;
+  const getItems = (items: unknown): OrderItem[] =>
+    Array.isArray(items) ? (items as OrderItem[]) : [];
 
   return (
     <PageTransition>
@@ -78,13 +49,42 @@ function MyOrdersPage() {
         <Navbar />
         <main className="mx-auto max-w-6xl px-4 pt-32 pb-20 md:pt-40">
           <ScrollReveal>
-            <h1 className="font-display text-6xl leading-none text-cream md:text-8xl">MY ORDERS</h1>
-            <p className="mt-3 text-muted-foreground">
-              Everything you&apos;ve ordered, all in one place.
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h1 className="font-display text-6xl leading-none text-cream md:text-8xl">
+                  MY ORDERS
+                </h1>
+                <p className="mt-3 text-muted-foreground">
+                  Everything you&apos;ve ordered, all in one place.
+                </p>
+              </div>
+              <Link
+                to="/my-addresses"
+                className="text-sm font-bold text-neon transition-colors hover:text-neon/80"
+              >
+                Manage Addresses →
+              </Link>
+            </div>
           </ScrollReveal>
 
-          {orders.length === 0 ? (
+          {loading ? (
+            <div className="mt-10 space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] p-5 md:p-6"
+                >
+                  <div className="h-7 w-44 animate-pulse rounded bg-white/10" />
+                  <div className="mt-3 h-4 w-32 animate-pulse rounded bg-white/10" />
+                  <div className="mt-6 space-y-3 border-t border-white/10 pt-5">
+                    <div className="h-4 w-full animate-pulse rounded bg-white/10" />
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                  </div>
+                  <div className="mt-6 h-10 w-full animate-pulse rounded-full bg-white/10 sm:w-40" />
+                </div>
+              ))}
+            </div>
+          ) : orders.length === 0 ? (
             <EmptyState
               title="No orders yet. Time to fix that. 🍔"
               description="Your future cravings will live here once you place an order."
@@ -94,34 +94,44 @@ function MyOrdersPage() {
           ) : (
             <div className="mt-10 space-y-4">
               {orders.map((order, index) => {
-                const status = order.status ?? "Pending";
+                const items = getItems(order.items);
                 return (
                   <ScrollReveal key={order.id} delay={Math.min(index * 80, 300)}>
                     <article className="rounded-2xl border border-white/5 bg-[#1A1A1A] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-neon/30 hover:shadow-[0_20px_50px_rgba(0,0,0,0.25)] md:p-6">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <p className="font-display text-3xl text-neon">#{order.id}</p>
+                          <p className="font-display text-3xl text-neon">
+                            #{order.order_number ?? order.id}
+                          </p>
                           <p className="text-sm text-muted-foreground">
-                            {formatDate(order.createdAt)}
+                            {formatDate(order.created_at ?? "")}
                           </p>
                         </div>
                         <span
-                          className={`w-fit rounded-full border px-3 py-1 text-xs font-bold ${STATUS_STYLES[status]}`}
+                          className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${getStatusColor(order.status)}`}
                         >
-                          {status}
+                          {getStatusLabel(order.status)}
                         </span>
                       </div>
 
                       <ul className="mt-5 space-y-2 border-t border-white/10 pt-5">
-                        {order.items.map((item) => (
+                        {items.map((item) => (
                           <li
                             key={`${order.id}-${item.id}`}
                             className="flex items-center justify-between gap-4 text-sm"
                           >
                             <div className="flex min-w-0 items-center gap-3">
-                              {getProductImage(item.id, item.category, item.image) && (
+                              {getProductImage(
+                                item.id,
+                                item.category,
+                                item.image_url || item.image,
+                              ) && (
                                 <img
-                                  src={getProductImage(item.id, item.category, item.image)}
+                                  src={getProductImage(
+                                    item.id,
+                                    item.category,
+                                    item.image_url || item.image,
+                                  )}
                                   alt={item.name}
                                   loading="lazy"
                                   className="h-11 w-11 shrink-0 rounded-xl object-cover"
@@ -143,12 +153,12 @@ function MyOrdersPage() {
 
                       <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
                         <span className="font-display text-4xl text-neon">
-                          {formatPrice(order.total)}
+                          {formatPrice(order.total_amount)}
                         </span>
                         <button
                           type="button"
                           onClick={() => {
-                            order.items.forEach((item) => {
+                            items.forEach((item) => {
                               const quantity = item.quantity ?? item.qty ?? 1;
                               Array.from({ length: quantity }).forEach(() =>
                                 addToCart({
@@ -156,11 +166,16 @@ function MyOrdersPage() {
                                   name: item.name,
                                   category: item.category ?? "Combos",
                                   price: item.price,
-                                  image: getProductImage(item.id, item.category, item.image),
+                                  image_url: getProductImage(
+                                    item.id,
+                                    item.category,
+                                    item.image_url || item.image,
+                                  ) ?? "",
                                 }),
                               );
                             });
-                            showToast("Items added back to cart! 🍔", "success");
+                            showToast("Items added to cart!", "success");
+                            navigate("/cart");
                           }}
                           className="inline-flex items-center justify-center gap-2 rounded-full border border-neon/50 px-5 py-3 text-sm font-bold text-neon transition-all hover:bg-neon hover:text-background hover:scale-[1.03] active:scale-[0.97]"
                         >

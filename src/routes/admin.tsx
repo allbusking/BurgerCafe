@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
@@ -20,25 +21,32 @@ import {
 } from "lucide-react";
 import { LoadingButton } from "@/components/LoadingButton";
 import { PageTransition } from "@/components/PageTransition";
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import { useAdminCustomers } from "@/hooks/useAdminCustomers";
+import { useAdminProducts, type ProductRecord } from "@/hooks/useAdminProducts";
+import { useAdminOrders, type OrderRecord, type OrderStatus } from "@/hooks/useOrders";
+import { useCategories } from "@/hooks/useProducts";
+import { formatDate, formatPrice, getStatusColor, getStatusLabel } from "@/utils/formatPrice";
+import { getProductImage } from "@/utils/productImages";
+import supabase from "../lib/supabaseClient";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [{ title: "Admin — HOT B&B" }, { name: "robots", content: "noindex" }],
   }),
-  component: AdminPage,
+  component: AdminDashboard,
 });
 
 type Section = "dashboard" | "orders" | "menu" | "add" | "customers" | "settings";
 
-function AdminPage() {
+export function AdminDashboard() {
   const [section, setSection] = useState<Section>("dashboard");
   const navigate = useNavigate();
-  const { isAdmin, isLoading } = useAuthContext();
+  const { isAdmin, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
-      navigate({ to: "/" });
+      navigate("/");
     }
   }, [isAdmin, isLoading, navigate]);
 
@@ -46,20 +54,20 @@ function AdminPage() {
 
   return (
     <PageTransition>
-    <div className="min-h-screen flex bg-[#111111] text-foreground">
-      <Sidebar section={section} setSection={setSection} />
-      <main className="flex-1 min-h-screen pb-24 md:ml-[260px] md:pb-0">
-        <TopBar section={section} />
-        <div className="p-4 md:p-8">
-          {section === "dashboard" && <Dashboard />}
-          {section === "orders" && <Orders />}
-          {section === "menu" && <MenuItems />}
-          {section === "add" && <AddProduct />}
-          {section === "customers" && <Customers />}
-          {section === "settings" && <SettingsPanel />}
-        </div>
-      </main>
-    </div>
+      <div className="min-h-screen flex bg-[#111111] text-foreground">
+        <Sidebar section={section} setSection={setSection} />
+        <main className="flex-1 min-h-screen pb-24 md:ml-[260px] md:pb-0">
+          <TopBar section={section} />
+          <div className="p-4 md:p-8">
+            {section === "dashboard" && <Dashboard />}
+            {section === "orders" && <Orders />}
+            {section === "menu" && <MenuItems />}
+            {section === "add" && <AddProduct />}
+            {section === "customers" && <Customers />}
+            {section === "settings" && <SettingsPanel />}
+          </div>
+        </main>
+      </div>
     </PageTransition>
   );
 }
@@ -77,11 +85,28 @@ const NAV: { id: Section; label: string; icon: typeof LayoutDashboard; emoji: st
 
 function Sidebar({ section, setSection }: { section: Section; setSection: (s: Section) => void }) {
   const navigate = useNavigate();
+  const { logout, profile, user } = useAuth();
+  const adminName =
+    profile?.full_name ||
+    profile?.name ||
+    (typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
+    (typeof user?.user_metadata?.name === "string" ? user.user_metadata.name : "") ||
+    user?.email?.split("@")[0] ||
+    "Admin";
+  const adminEmail = user?.email || profile?.email || "";
+  const initials = adminName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
   return (
     <aside className="fixed inset-x-0 bottom-0 md:inset-y-0 md:left-0 md:w-[260px] bg-[#0D0D0D] border-t md:border-t-0 md:border-r border-white/5 flex flex-col z-40">
       <div className="hidden px-4 md:px-6 py-4 md:py-6 md:flex items-center gap-2 border-b border-white/5">
         <Flame size={18} className="text-neon" strokeWidth={2.5} />
-        <span className="font-display text-xl tracking-wide text-neon leading-none">HOT B&B ADMIN</span>
+        <span className="font-display text-xl tracking-wide text-neon leading-none">
+          HOT B&B ADMIN
+        </span>
       </div>
 
       <nav className="flex md:flex-1 gap-1 md:block px-2 md:px-3 py-2 md:py-4 md:space-y-1 overflow-x-auto md:overflow-y-auto">
@@ -98,7 +123,9 @@ function Sidebar({ section, setSection }: { section: Section; setSection: (s: Se
                   : "text-foreground/60 hover:text-foreground hover:bg-white/[0.03]",
               ].join(" ")}
             >
-              {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-neon" />}
+              {active && (
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-neon" />
+              )}
               <span className="text-base leading-none">{n.emoji}</span>
               <span className="whitespace-nowrap">{n.label}</span>
             </button>
@@ -109,17 +136,17 @@ function Sidebar({ section, setSection }: { section: Section; setSection: (s: Se
       <div className="hidden md:block p-4 border-t border-white/5">
         <div className="flex items-center gap-3 mb-3">
           <div className="h-10 w-10 rounded-full bg-neon text-black grid place-items-center font-bold">
-            A
+            {initials}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">Admin User</p>
-            <p className="text-xs text-foreground/50 truncate">admin@hotbb.in</p>
+            <p className="text-sm font-semibold truncate">{adminName}</p>
+            <p className="text-xs text-foreground/50 truncate">{adminEmail}</p>
           </div>
         </div>
         <button
-          onClick={() => {
-            localStorage.removeItem("hotbb-role");
-            navigate({ to: "/" });
+          onClick={async () => {
+            await logout();
+            navigate("/");
           }}
           className="w-full flex items-center justify-center gap-2 rounded-lg border border-white/10 py-2 text-xs font-semibold text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors"
         >
@@ -145,7 +172,12 @@ function TopBar({ section }: { section: Section }) {
       <div>
         <h1 className="font-display text-2xl tracking-wide leading-none">{titles[section]}</h1>
         <p className="text-xs text-foreground/40 mt-1">
-          {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          {new Date().toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
         </p>
       </div>
       <div className="hidden sm:flex items-center gap-2 text-xs text-foreground/50">
@@ -159,51 +191,135 @@ function TopBar({ section }: { section: Section }) {
 
 interface AdminOrder {
   id: string;
+  orderId: string;
   customer: string;
+  customerEmail: string;
   items: { name: string; qty: number; price: number }[];
+  rawItems: unknown;
+  subtotal: number;
+  deliveryFee: number;
   total: number;
-  status: "Pending" | "Preparing" | "Ready" | "Delivered";
+  status: OrderStatus;
   time: string;
+  createdAt?: string;
+  deliveryType: string;
+  deliveryAddress?: string | null;
+  estimatedTime?: unknown;
 }
 
-const SAMPLE_ORDERS: AdminOrder[] = [
-  { id: "HOT-2024-1042", customer: "Aryan Mehra", items: [{ name: "Smash Double Burger", qty: 2, price: 349 }, { name: "Taro Bubble Tea", qty: 1, price: 199 }], total: 897, status: "Pending", time: "2 min ago" },
-  { id: "HOT-2024-1041", customer: "Priya Sharma", items: [{ name: "Chicken Shawarma", qty: 1, price: 249 }], total: 249, status: "Preparing", time: "8 min ago" },
-  { id: "HOT-2024-1040", customer: "Rohan Kapoor", items: [{ name: "Family Feast", qty: 1, price: 999 }], total: 999, status: "Ready", time: "12 min ago" },
-  { id: "HOT-2024-1039", customer: "Neha Singh", items: [{ name: "Oreo Cold Coffee", qty: 2, price: 179 }], total: 358, status: "Delivered", time: "25 min ago" },
-  { id: "HOT-2024-1038", customer: "Karan Patel", items: [{ name: "Classic Burger", qty: 1, price: 249 }, { name: "Cappuccino", qty: 1, price: 149 }], total: 398, status: "Delivered", time: "38 min ago" },
-  { id: "HOT-2024-1037", customer: "Ishita Joshi", items: [{ name: "Mango Bubble Tea", qty: 3, price: 189 }], total: 567, status: "Preparing", time: "44 min ago" },
-  { id: "HOT-2024-1036", customer: "Vikram Rao", items: [{ name: "Double Trouble", qty: 1, price: 749 }], total: 749, status: "Delivered", time: "1 hr ago" },
-  { id: "HOT-2024-1035", customer: "Sanya Gupta", items: [{ name: "Veg Shawarma", qty: 2, price: 199 }], total: 398, status: "Pending", time: "1 hr ago" },
-  { id: "HOT-2024-1034", customer: "Aditya Verma", items: [{ name: "Hazelnut Cold Coffee", qty: 1, price: 179 }], total: 179, status: "Delivered", time: "2 hr ago" },
-  { id: "HOT-2024-1033", customer: "Meera Iyer", items: [{ name: "Burger + Bubble Tea Combo", qty: 1, price: 499 }], total: 499, status: "Ready", time: "2 hr ago" },
-];
+function normalizeOrder(order: OrderRecord): AdminOrder {
+  const items = Array.isArray(order.items)
+    ? (order.items as { name?: string; quantity?: number; qty?: number; price?: number }[])
+    : [];
+
+  return {
+    id: order.order_number ?? order.id,
+    orderId: order.id,
+    customer: order.customer_name || order.customer_email || "Guest Customer",
+    customerEmail: order.customer_email,
+    items: items.map((item) => ({
+      name: item.name ?? "Item",
+      qty: item.quantity ?? item.qty ?? 1,
+      price: Number(item.price ?? 0),
+    })),
+    rawItems: order.items,
+    subtotal: Number(order.subtotal ?? 0),
+    deliveryFee: Number(order.delivery_fee ?? 0),
+    total: Number(order.total_amount ?? 0),
+    status: order.status,
+    time: order.created_at ? formatDate(order.created_at) : "",
+    createdAt: order.created_at,
+    deliveryType: order.delivery_type,
+    deliveryAddress: order.delivery_address,
+    estimatedTime: order.estimated_time,
+  };
+}
+
+function getCategoryName(product: ProductRecord) {
+  const category = product.categories as { name?: string } | null | undefined;
+  return category?.name ?? "Uncategorized";
+}
+
+function getProductGradient(category: string) {
+  if (category === "Shawarma") return "from-orange-500/40 to-yellow-600/40";
+  if (category === "Bubble Tea") return "from-purple-500/40 to-pink-500/40";
+  if (category === "Coffee" || category === "Cold Coffee")
+    return "from-amber-800/40 to-stone-700/40";
+  if (category === "Combos") return "from-rose-500/40 to-fuchsia-600/40";
+  return "from-amber-500/40 to-red-600/40";
+}
 
 function Dashboard() {
+  const { orders: rawOrders, loading, updateOrderStatus } = useAdminOrders();
+  const { products } = useAdminProducts();
+  const orders = useMemo(() => rawOrders.map(normalizeOrder), [rawOrders]);
   const stats = useMemo(() => {
-    const today = SAMPLE_ORDERS.length;
-    const revenue = SAMPLE_ORDERS.reduce((s, o) => s + o.total, 0);
-    const pending = SAMPLE_ORDERS.filter((o) => o.status === "Pending").length;
-    return { today, revenue, pending, menu: 28 };
-  }, []);
+    const todayKey = new Date().toDateString();
+    const today = rawOrders.filter((order) =>
+      order.created_at ? new Date(order.created_at).toDateString() === todayKey : false,
+    ).length;
+    const revenue = rawOrders.reduce((sum, order) => sum + Number(order.total_amount ?? 0), 0);
+    const pending = rawOrders.filter((order) => order.status === "pending").length;
+    return { today, revenue, pending, total: rawOrders.length };
+  }, [rawOrders]);
 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Today's Orders" value={stats.today.toString()} accent="text-neon" icon={<ShoppingBag size={18} />} trend="+12%" />
-        <StatCard label="Revenue Today" value={`₹${stats.revenue.toLocaleString("en-IN")}`} accent="text-emerald-400" icon={<IndianRupee size={18} />} trend="+8%" />
-        <StatCard label="Pending Orders" value={stats.pending.toString()} accent="text-amber-400" icon={<Clock size={18} />} trend="3 urgent" />
-        <StatCard label="Menu Items" value={stats.menu.toString()} accent="text-blue-400" icon={<UtensilsCrossed size={18} />} trend="2 new" />
+        <StatCard
+          label="Today's Orders"
+          value={stats.today.toString()}
+          accent="text-neon"
+          icon={<ShoppingBag size={18} />}
+          trend="+12%"
+        />
+        <StatCard
+          label="Revenue Today"
+          value={formatPrice(stats.revenue)}
+          accent="text-emerald-400"
+          icon={<IndianRupee size={18} />}
+          trend="+8%"
+        />
+        <StatCard
+          label="Pending Orders"
+          value={stats.pending.toString()}
+          accent="text-amber-400"
+          icon={<Clock size={18} />}
+          trend="3 urgent"
+        />
+        <StatCard
+          label="Total Orders"
+          value={stats.total.toString()}
+          accent="text-blue-400"
+          icon={<UtensilsCrossed size={18} />}
+          trend="all time"
+        />
       </div>
 
-      <Panel title="Recent Orders" subtitle="Latest 10 orders across all channels">
-        <OrdersTable orders={SAMPLE_ORDERS} compact />
+      <Panel title="Recent Orders" subtitle="Latest 10 orders across all channels" allowOverflow>
+        {orders.length === 0 && !loading ? (
+          <div className="px-6 py-8 text-sm text-foreground/50">No orders yet</div>
+        ) : (
+          <OrdersTable orders={orders.slice(0, 10)} compact updateOrderStatus={updateOrderStatus} />
+        )}
       </Panel>
     </div>
   );
 }
 
-function StatCard({ label, value, accent, icon, trend }: { label: string; value: string; accent: string; icon: React.ReactNode; trend: string }) {
+function StatCard({
+  label,
+  value,
+  accent,
+  icon,
+  trend,
+}: {
+  label: string;
+  value: string;
+  accent: string;
+  icon: React.ReactNode;
+  trend: string;
+}) {
   return (
     <div className="rounded-2xl bg-[#161616] border border-white/5 p-5 hover:border-white/10 transition-colors">
       <div className="flex items-center justify-between text-foreground/50 text-xs">
@@ -218,9 +334,23 @@ function StatCard({ label, value, accent, icon, trend }: { label: string; value:
   );
 }
 
-function Panel({ title, subtitle, children, action }: { title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Panel({
+  title,
+  subtitle,
+  children,
+  action,
+  allowOverflow = false,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+  allowOverflow?: boolean;
+}) {
   return (
-    <section className="rounded-2xl bg-[#161616] border border-white/5 overflow-hidden">
+    <section
+      className={`rounded-2xl bg-[#161616] border border-white/5 ${allowOverflow ? "overflow-visible" : "overflow-hidden"}`}
+    >
       <div className="px-4 md:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="font-semibold">{title}</h2>
@@ -235,33 +365,65 @@ function Panel({ title, subtitle, children, action }: { title: string; subtitle?
 
 /* ---------------- Orders Table ---------------- */
 
-const STATUS_STYLES: Record<AdminOrder["status"], string> = {
-  Pending: "bg-amber-400/10 text-amber-300 border-amber-400/20",
-  Preparing: "bg-blue-400/10 text-blue-300 border-blue-400/20",
-  Ready: "bg-emerald-400/10 text-emerald-300 border-emerald-400/20",
-  Delivered: "bg-white/5 text-foreground/50 border-white/10",
-};
-
 function StatusBadge({ status }: { status: AdminOrder["status"] }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[status]}`}>
-      {status}
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getStatusColor(status)}`}
+    >
+      {getStatusLabel(status)}
     </span>
   );
 }
 
-function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; compact?: boolean; expandable?: boolean }) {
+function OrdersTable({
+  orders,
+  compact,
+  expandable,
+  updateOrderStatus,
+}: {
+  orders: AdminOrder[];
+  compact?: boolean;
+  expandable?: boolean;
+  updateOrderStatus?: (orderId: string, status: OrderStatus) => Promise<void>;
+}) {
   const [data, setData] = useState(orders);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => setData(orders), [orders]);
 
-  const setStatus = (id: string, status: AdminOrder["status"]) => {
+  const setStatus = async (id: string, status: AdminOrder["status"]) => {
     setData((d) => d.map((o) => (o.id === id ? { ...o, status } : o)));
+    const order = data.find((o) => o.id === id);
+    if (order && updateOrderStatus) {
+      try {
+        await updateOrderStatus(order.orderId, status);
+        try {
+          await supabase.functions.invoke("send-order-email", {
+            body: {
+              to: order.customerEmail,
+              customerName: order.customer,
+              orderNumber: order.id,
+              items: order.rawItems,
+              subtotal: order.subtotal,
+              deliveryFee: order.deliveryFee,
+              total: order.total,
+              deliveryType: order.deliveryType,
+              address: order.deliveryAddress,
+              estimatedTime: order.estimatedTime,
+            },
+          });
+        } catch (emailError) {
+          console.error("Failed to send order status email:", emailError);
+        }
+      } catch (error) {
+        console.error("Failed to update order status:", error);
+        setData(orders);
+      }
+    }
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto md:overflow-visible">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-wider text-foreground/40 border-b border-white/5">
@@ -286,10 +448,12 @@ function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; co
                 <td className="px-6 py-4 font-mono text-xs text-neon">{o.id}</td>
                 <td className="px-6 py-4">{o.customer}</td>
                 <td className="px-6 py-4 text-foreground/70">
-                  {o.items.reduce((s, i) => s + i.qty, 0)} item{o.items.length > 1 ? "s" : ""}
+                  {o.items.map((item) => `${item.name} x ${item.qty}`).join(", ")}
                 </td>
-                <td className="px-6 py-4 font-semibold">₹{o.total}</td>
-                <td className="px-6 py-4"><StatusBadge status={o.status} /></td>
+                <td className="px-6 py-4 font-semibold">{formatPrice(o.total)}</td>
+                <td className="px-6 py-4">
+                  <StatusBadge status={o.status} />
+                </td>
                 <td className="px-6 py-4 text-foreground/50 text-xs">{o.time}</td>
                 <td className="px-6 py-4 text-right">
                   <StatusDropdown current={o.status} onChange={(s) => setStatus(o.id, s)} />
@@ -299,11 +463,15 @@ function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; co
                 <tr className="bg-black/30">
                   <td colSpan={7} className="px-6 py-4">
                     <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-wider text-foreground/40 mb-2">Items</p>
+                      <p className="text-xs uppercase tracking-wider text-foreground/40 mb-2">
+                        Items
+                      </p>
                       {o.items.map((it, i) => (
                         <div key={i} className="flex justify-between text-sm text-foreground/80">
-                          <span>{it.name} × {it.qty}</span>
-                          <span>₹{it.price * it.qty}</span>
+                          <span>
+                            {it.name} × {it.qty}
+                          </span>
+                          <span>{formatPrice(it.price * it.qty)}</span>
                         </div>
                       ))}
                     </div>
@@ -318,9 +486,22 @@ function OrdersTable({ orders, compact, expandable }: { orders: AdminOrder[]; co
   );
 }
 
-function StatusDropdown({ current, onChange }: { current: AdminOrder["status"]; onChange: (s: AdminOrder["status"]) => void }) {
+function StatusDropdown({
+  current,
+  onChange,
+}: {
+  current: AdminOrder["status"];
+  onChange: (s: AdminOrder["status"]) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const opts: AdminOrder["status"][] = ["Pending", "Preparing", "Ready", "Delivered"];
+  const opts: AdminOrder["status"][] = [
+    "pending",
+    "confirmed",
+    "preparing",
+    "ready",
+    "delivered",
+    "cancelled",
+  ];
   return (
     <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
       <button
@@ -330,14 +511,17 @@ function StatusDropdown({ current, onChange }: { current: AdminOrder["status"]; 
         Update <ChevronDown size={12} />
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 w-36 rounded-md border border-white/10 bg-[#1a1a1a] shadow-xl z-20 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-[#1a1a1a] shadow-2xl shadow-black/40 z-50 overflow-hidden">
           {opts.map((o) => (
             <button
               key={o}
-              onClick={() => { onChange(o); setOpen(false); }}
+              onClick={() => {
+                onChange(o);
+                setOpen(false);
+              }}
               className={`w-full text-left px-3 py-2 text-xs hover:bg-white/5 ${o === current ? "text-neon" : "text-foreground/70"}`}
             >
-              {o}
+              {getStatusLabel(o)}
             </button>
           ))}
         </div>
@@ -349,10 +533,12 @@ function StatusDropdown({ current, onChange }: { current: AdminOrder["status"]; 
 /* ---------------- Orders page ---------------- */
 
 function Orders() {
+  const { orders: rawOrders, loading, updateOrderStatus } = useAdminOrders();
+  const orders = useMemo(() => rawOrders.map(normalizeOrder), [rawOrders]);
   const [filter, setFilter] = useState<"All" | AdminOrder["status"]>("All");
   const [q, setQ] = useState("");
 
-  const filtered = SAMPLE_ORDERS.filter((o) => {
+  const filtered = orders.filter((o) => {
     if (filter !== "All" && o.status !== filter) return false;
     if (q && !`${o.id} ${o.customer}`.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
@@ -362,10 +548,14 @@ function Orders() {
     <Panel
       title="All Orders"
       subtitle={`${filtered.length} order${filtered.length === 1 ? "" : "s"} found`}
+      allowOverflow
       action={
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40"
+            />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -377,7 +567,7 @@ function Orders() {
       }
     >
       <div className="px-6 pt-4 flex flex-wrap gap-2">
-        {(["All", "Pending", "Preparing", "Ready", "Delivered"] as const).map((f) => (
+        {(["All", "pending", "confirmed", "preparing", "ready", "delivered", "cancelled"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -388,74 +578,97 @@ function Orders() {
                 : "border-white/10 text-foreground/70 hover:bg-white/5",
             ].join(" ")}
           >
-            {f}
+            {f === "All" ? "All" : getStatusLabel(f)}
           </button>
         ))}
       </div>
-      <OrdersTable orders={filtered} expandable />
+      {filtered.length === 0 && !loading ? (
+        <div className="px-6 py-8 text-sm text-foreground/50">No orders yet</div>
+      ) : (
+        <OrdersTable orders={filtered} expandable updateOrderStatus={updateOrderStatus} />
+      )}
     </Panel>
   );
 }
 
 /* ---------------- Menu Items ---------------- */
 
-interface MenuRow {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  available: boolean;
-  gradient: string;
-}
-
-const MENU_ROWS: MenuRow[] = [
-  { id: "1", name: "Smash Double Burger", category: "Burgers", price: 349, available: true, gradient: "from-amber-500/40 to-red-600/40" },
-  { id: "2", name: "Chicken Shawarma", category: "Shawarma", price: 249, available: true, gradient: "from-orange-500/40 to-yellow-600/40" },
-  { id: "3", name: "Taro Bubble Tea", category: "Bubble Tea", price: 199, available: true, gradient: "from-purple-500/40 to-pink-500/40" },
-  { id: "4", name: "Oreo Cold Coffee", category: "Cold Coffee", price: 179, available: false, gradient: "from-stone-700/40 to-amber-900/40" },
-  { id: "5", name: "Cappuccino", category: "Coffee", price: 149, available: true, gradient: "from-amber-800/40 to-stone-700/40" },
-  { id: "6", name: "Family Feast", category: "Combos", price: 999, available: true, gradient: "from-rose-500/40 to-fuchsia-600/40" },
-  { id: "7", name: "Mango Bubble Tea", category: "Bubble Tea", price: 189, available: true, gradient: "from-yellow-400/40 to-orange-500/40" },
-  { id: "8", name: "Veg Shawarma", category: "Shawarma", price: 199, available: true, gradient: "from-lime-500/40 to-emerald-600/40" },
-];
-
 function MenuItems() {
-  const [rows, setRows] = useState(MENU_ROWS);
+  const { products, loading, toggleAvailability, deleteProduct } = useAdminProducts();
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
-  const toggle = (id: string) => setRows((r) => r.map((m) => (m.id === id ? { ...m, available: !m.available } : m)));
-  const del = (id: string) => { setRows((r) => r.filter((m) => m.id !== id)); setConfirmId(null); };
+  const del = async (id: string) => {
+    await deleteProduct(id);
+    setConfirmId(null);
+  };
 
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {rows.map((m) => (
-          <div key={m.id} className="rounded-2xl bg-[#161616] border border-white/5 overflow-hidden hover:border-white/10 transition-colors">
-            <div className={`h-32 bg-gradient-to-br ${m.gradient} grid place-items-center`}>
-              <span className="text-4xl">🍔</span>
-            </div>
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="font-semibold truncate">{m.name}</h3>
-                  <p className="text-xs text-foreground/50">{m.category}</p>
-                </div>
-                <span className="font-display text-xl text-neon">₹{m.price}</span>
-              </div>
-              <div className="mt-4 flex items-center justify-between">
-                <Toggle checked={m.available} onChange={() => toggle(m.id)} />
-                <div className="flex items-center gap-1">
-                  <button className="grid h-8 w-8 place-items-center rounded-md hover:bg-white/5 text-foreground/60 hover:text-foreground">
-                    <Pencil size={14} />
-                  </button>
-                  <button onClick={() => setConfirmId(m.id)} className="grid h-8 w-8 place-items-center rounded-md hover:bg-red-500/10 text-red-400/80 hover:text-red-400">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+        {loading &&
+          Array.from({ length: 8 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-2xl bg-[#161616] border border-white/5 overflow-hidden"
+            >
+              <div className="h-32 animate-pulse bg-white/10" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                <div className="h-4 w-1/2 animate-pulse rounded bg-white/10" />
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        {!loading &&
+          products.map((m) => {
+            const category = getCategoryName(m);
+            const imageUrl = getProductImage(m.id, category, m.image_url ?? undefined, m.name);
+            return (
+              <div
+                key={m.id}
+                className="rounded-2xl bg-[#161616] border border-white/5 overflow-hidden hover:border-white/10 transition-colors"
+              >
+                <div
+                  className={`h-32 bg-gradient-to-br ${getProductGradient(category)} grid place-items-center overflow-hidden p-2`}
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={m.name}
+                      className="h-full w-full object-contain object-center"
+                    />
+                  ) : (
+                    <span className="text-4xl">🍔</span>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold truncate">{m.name}</h3>
+                      <p className="text-xs text-foreground/50">{category}</p>
+                    </div>
+                    <span className="font-display text-xl text-neon">{formatPrice(m.price)}</span>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <Toggle
+                      checked={m.is_available}
+                      onChange={() => toggleAvailability(m.id, m.is_available).catch(console.error)}
+                    />
+                    <div className="flex items-center gap-1">
+                      <button className="grid h-8 w-8 place-items-center rounded-md hover:bg-white/5 text-foreground/60 hover:text-foreground">
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmId(m.id)}
+                        className="grid h-8 w-8 place-items-center rounded-md hover:bg-red-500/10 text-red-400/80 hover:text-red-400"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
       </div>
 
       {confirmId && (
@@ -464,10 +677,16 @@ function MenuItems() {
             <h3 className="font-display text-2xl">Delete this item?</h3>
             <p className="mt-2 text-sm text-foreground/60">This action cannot be undone.</p>
             <div className="mt-5 flex gap-2 justify-end">
-              <button onClick={() => setConfirmId(null)} className="rounded-md border border-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/5">
+              <button
+                onClick={() => setConfirmId(null)}
+                className="rounded-md border border-white/10 px-4 py-2 text-xs font-semibold hover:bg-white/5"
+              >
                 Cancel
               </button>
-              <button onClick={() => del(confirmId)} className="rounded-md bg-red-500 hover:bg-red-600 px-4 py-2 text-xs font-semibold text-white">
+              <button
+                onClick={() => del(confirmId)}
+                className="rounded-md bg-red-500 hover:bg-red-600 px-4 py-2 text-xs font-semibold text-white"
+              >
                 Delete
               </button>
             </div>
@@ -478,17 +697,29 @@ function MenuItems() {
   );
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label?: string }) {
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label?: string;
+}) {
   return (
-    <label className="inline-flex items-center gap-2 cursor-pointer">
+    <label className="inline-flex min-w-[124px] items-center gap-3 cursor-pointer">
       <button
         type="button"
         onClick={onChange}
-        className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-neon" : "bg-white/10"}`}
+        className={`relative h-5 w-10 shrink-0 rounded-full transition-colors ${checked ? "bg-neon" : "bg-white/10"}`}
       >
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-black transition-transform ${checked ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+        <span
+          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-black transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`}
+        />
       </button>
-      <span className="text-xs text-foreground/70">{label ?? (checked ? "Available" : "Unavailable")}</span>
+      <span className="whitespace-nowrap text-xs text-foreground/70">
+        {label ?? (checked ? "Available" : "Unavailable")}
+      </span>
     </label>
   );
 }
@@ -496,12 +727,25 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 /* ---------------- Add Product ---------------- */
 
 function AddProduct() {
-  const [form, setForm] = useState({ name: "", category: "Burgers", price: "", description: "", available: true, featured: false });
+  const { categories } = useCategories();
+  const { addProduct, uploadProductImage } = useAdminProducts();
+  const [form, setForm] = useState({
+    name: "",
+    categoryId: "",
+    price: "",
+    description: "",
+    available: true,
+    featured: false,
+    bestseller: false,
+    badge: "",
+  });
   const [image, setImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleFile = (file: File) => {
+    setImageFile(file);
     const r = new FileReader();
     r.onload = () => setImage(r.result as string);
     r.readAsDataURL(file);
@@ -510,25 +754,72 @@ function AddProduct() {
   return (
     <div className="max-w-3xl">
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           setSaving(true);
-          window.setTimeout(() => {
+          try {
+            const imageUrl = imageFile ? await uploadProductImage(imageFile) : null;
+            await addProduct({
+              name: form.name,
+              description: form.description,
+              price: Number(form.price),
+              category_id: form.categoryId || null,
+              image_url: imageUrl,
+              is_available: form.available,
+              is_featured: form.featured,
+              is_bestseller: form.bestseller,
+              badge: form.badge || null,
+            });
+            setForm({
+              name: "",
+              categoryId: "",
+              price: "",
+              description: "",
+              available: true,
+              featured: false,
+              bestseller: false,
+              badge: "",
+            });
+            setImage(null);
+            setImageFile(null);
             setSaving(false);
             setSaved(true);
             window.setTimeout(() => setSaved(false), 2400);
-          }, 800);
+          } catch (error) {
+            console.error("Failed to add product:", error);
+            setSaving(false);
+          }
         }}
         className="rounded-2xl bg-[#161616] border border-white/5 p-6 md:p-8 space-y-5"
       >
-        <Input label="Product Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Smash Double Burger" required />
+        <Input
+          label="Product Name"
+          value={form.name}
+          onChange={(v) => setForm({ ...form, name: v })}
+          placeholder="Smash Double Burger"
+          required
+        />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Select label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} options={["Burgers", "Shawarma", "Bubble Tea", "Coffee", "Cold Coffee", "Combo"]} />
-          <Input label="Price (₹)" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} placeholder="349" required />
+          <Select
+            label="Category"
+            value={form.categoryId}
+            onChange={(v) => setForm({ ...form, categoryId: v })}
+            options={categories.map((category) => ({ label: category.name, value: category.id }))}
+          />
+          <Input
+            label="Price (₹)"
+            type="number"
+            value={form.price}
+            onChange={(v) => setForm({ ...form, price: v })}
+            placeholder="349"
+            required
+          />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">Description</label>
+          <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">
+            Description
+          </label>
           <textarea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -539,10 +830,16 @@ function AddProduct() {
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">Product Image</label>
+          <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">
+            Product Image
+          </label>
           <label className="relative flex flex-col items-center justify-center h-44 rounded-xl border-2 border-dashed border-white/15 hover:border-neon/60 transition-colors cursor-pointer overflow-hidden">
             {image ? (
-              <img src={image} alt="preview" className="absolute inset-0 h-full w-full object-cover" />
+              <img
+                src={image}
+                alt="preview"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
             ) : (
               <>
                 <Upload size={22} className="text-foreground/40" />
@@ -550,14 +847,39 @@ function AddProduct() {
                 <p className="text-xs text-foreground/40">PNG, JPG up to 5MB</p>
               </>
             )}
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            />
           </label>
         </div>
 
         <div className="flex flex-wrap items-center gap-6 pt-2">
-          <Toggle checked={form.available} onChange={() => setForm({ ...form, available: !form.available })} label="Available" />
-          <Toggle checked={form.featured} onChange={() => setForm({ ...form, featured: !form.featured })} label="Featured on homepage" />
+          <Toggle
+            checked={form.available}
+            onChange={() => setForm({ ...form, available: !form.available })}
+            label="Available"
+          />
+          <Toggle
+            checked={form.featured}
+            onChange={() => setForm({ ...form, featured: !form.featured })}
+            label="Featured on homepage"
+          />
+          <Toggle
+            checked={form.bestseller}
+            onChange={() => setForm({ ...form, bestseller: !form.bestseller })}
+            label="Bestseller"
+          />
         </div>
+
+        <Input
+          label="Badge (optional)"
+          value={form.badge}
+          onChange={(v) => setForm({ ...form, badge: v })}
+          placeholder="NEW"
+        />
 
         <div className="pt-4 border-t border-white/5 flex items-center justify-between">
           {saved ? (
@@ -577,10 +899,26 @@ function AddProduct() {
   );
 }
 
-function Input({ label, value, onChange, type = "text", placeholder, required }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; required?: boolean }) {
+function Input({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+}) {
   return (
     <div>
-      <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">{label}</label>
+      <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">
+        {label}
+      </label>
       <input
         type={type}
         value={value}
@@ -593,16 +931,35 @@ function Input({ label, value, onChange, type = "text", placeholder, required }:
   );
 }
 
-function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+function Select({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { label: string; value: string }[];
+}) {
   return (
     <div>
-      <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">{label}</label>
+      <label className="block text-xs uppercase tracking-wider text-foreground/50 mb-2">
+        {label}
+      </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-neon"
       >
-        {options.map((o) => <option key={o} value={o} className="bg-[#161616]">{o}</option>)}
+        <option value="" className="bg-[#161616]">
+          Select category
+        </option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-[#161616]">
+            {o.label}
+          </option>
+        ))}
       </select>
     </div>
   );
@@ -611,38 +968,53 @@ function Select({ label, value, onChange, options }: { label: string; value: str
 /* ---------------- Customers / Settings (placeholders) ---------------- */
 
 function Customers() {
-  const data = [
-    { name: "Aryan Mehra", email: "aryan@example.com", orders: 12, spent: 4280 },
-    { name: "Priya Sharma", email: "priya@example.com", orders: 8, spent: 3120 },
-    { name: "Rohan Kapoor", email: "rohan@example.com", orders: 21, spent: 9870 },
-    { name: "Neha Singh", email: "neha@example.com", orders: 5, spent: 1450 },
-  ];
+  const { customers, loading } = useAdminCustomers();
   return (
-    <Panel title="Customers" subtitle={`${data.length} active customers`}>
+    <Panel title="Customers" subtitle={`${customers.length} active customers`}>
       <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-[11px] uppercase tracking-wider text-foreground/40 border-b border-white/5">
-            <th className="px-6 py-3 font-medium">Name</th>
-            <th className="px-6 py-3 font-medium">Email</th>
-            <th className="px-6 py-3 font-medium">Orders</th>
-            <th className="px-6 py-3 font-medium">Lifetime Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((c) => (
-            <tr key={c.email} className="border-b border-white/5 hover:bg-white/[0.03]">
-              <td className="px-6 py-4 flex items-center gap-3">
-                <span className="h-8 w-8 rounded-full bg-neon/20 text-neon grid place-items-center text-xs font-bold">{c.name[0]}</span>
-                {c.name}
-              </td>
-              <td className="px-6 py-4 text-foreground/70">{c.email}</td>
-              <td className="px-6 py-4">{c.orders}</td>
-              <td className="px-6 py-4 font-semibold text-neon">₹{c.spent.toLocaleString("en-IN")}</td>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-wider text-foreground/40 border-b border-white/5">
+              <th className="px-6 py-3 font-medium">Name</th>
+              <th className="px-6 py-3 font-medium">Email</th>
+              <th className="px-6 py-3 font-medium">Orders</th>
+              <th className="px-6 py-3 font-medium">Lifetime Value</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {loading &&
+              Array.from({ length: 4 }).map((_, index) => (
+                <tr key={index} className="border-b border-white/5">
+                  <td className="px-6 py-4">
+                    <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 w-52 animate-pulse rounded bg-white/10" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 w-10 animate-pulse rounded bg-white/10" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+                  </td>
+                </tr>
+              ))}
+            {!loading &&
+              customers.map((c) => (
+                <tr key={c.id} className="border-b border-white/5 hover:bg-white/[0.03]">
+                  <td className="px-6 py-4 flex items-center gap-3">
+                    <span className="h-8 w-8 rounded-full bg-neon/20 text-neon grid place-items-center text-xs font-bold">
+                      {c.name[0]}
+                    </span>
+                    {c.name}
+                  </td>
+                  <td className="px-6 py-4 text-foreground/70">{c.email}</td>
+                  <td className="px-6 py-4">{c.orders}</td>
+                  <td className="px-6 py-4 font-semibold text-neon">{formatPrice(c.spent)}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       </div>
     </Panel>
   );
@@ -652,7 +1024,9 @@ function SettingsPanel() {
   return (
     <Panel title="Settings" subtitle="Store and account preferences">
       <div className="p-6 space-y-4 text-sm text-foreground/70">
-        <p>Customize store hours, payment integrations, delivery zones and team access from here.</p>
+        <p>
+          Customize store hours, payment integrations, delivery zones and team access from here.
+        </p>
         <p className="text-foreground/40">Settings module coming soon.</p>
       </div>
     </Panel>

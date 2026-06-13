@@ -1,173 +1,143 @@
-import { createContext, useContext, ReactNode, useState, useEffect } from "react";
-import { getProductImage } from "@/utils/productImages";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-export interface CartItem {
+type CartItem = {
   id: string;
   name: string;
-  category: string;
   price: number;
-  image?: string;
   quantity: number;
-  qty: number;
-}
-
-interface CartContextType {
-  items: CartItem[];
-  deliveryMode: "Delivery" | "Pickup";
-  totalItems: number;
-  totalPrice: number;
-  addToCart: (item: CartProduct) => void;
-  removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
-  addItem: (item: CartProduct) => void;
-  removeItem: (id: string) => void;
-  setQuantity: (id: string, qty: number) => void;
-  clearCart: () => void;
-  setDeliveryMode: (mode: "Delivery" | "Pickup") => void;
-  getTotalItems: () => number;
-}
-
-const CartContext = createContext<CartContextType | undefined>(undefined);
-
-const CART_KEY = "hotbb-cart-v1";
-const DELIVERY_KEY = "hotbb-delivery-v1";
-
-type CartProduct = {
-  id: string;
-  name: string;
   category: string;
-  price: number;
-  image?: string;
+  image_url: string;
 };
 
-function normalizeItem(item: Partial<CartItem> & CartProduct): CartItem {
-  const quantity = item.quantity ?? item.qty ?? 1;
-  return {
-    id: item.id,
-    name: item.name,
-    category: item.category,
-    price: item.price,
-    image: getProductImage(item.id, item.category, item.image),
-    quantity,
-    qty: quantity,
-  };
-}
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  image_url: string;
+};
+
+type CartContextValue = {
+  items: CartItem[];
+  totalItems: number;
+  totalPrice: number;
+  deliveryFee: number;
+  tax: number;
+  grandTotal: number;
+  addToCart: (product: Product) => void;
+  removeFromCart: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  clearCart: () => void;
+};
+
+const CartContext = createContext<CartContextValue | undefined>(undefined);
+const CART_KEY = "hotbb_cart";
+
+const roundToTwo = (value: number) => Math.round(value * 100) / 100;
+
+const getInitialItems = () => {
+  try {
+    const storedCart = localStorage.getItem(CART_KEY);
+    if (!storedCart) return [];
+
+    const parsedCart = JSON.parse(storedCart);
+    return Array.isArray(parsedCart) ? parsedCart : [];
+  } catch {
+    return [];
+  }
+};
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [deliveryMode, setDeliveryModeState] = useState<"Delivery" | "Pickup">("Delivery");
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Hydrate from localStorage
-  useEffect(() => {
-    try {
-      const savedCart = localStorage.getItem(CART_KEY);
-      const savedDelivery = localStorage.getItem(DELIVERY_KEY);
-
-      if (savedCart) {
-        setItems(JSON.parse(savedCart).map(normalizeItem));
-      }
-      if (savedDelivery) {
-        setDeliveryModeState(savedDelivery as "Delivery" | "Pickup");
-      }
-    } catch (error) {
-      console.error("Failed to load cart from localStorage:", error);
-    }
-    setIsHydrated(true);
-  }, []);
-
-  // Persist to localStorage
-  useEffect(() => {
-    if (isHydrated) {
-      localStorage.setItem(CART_KEY, JSON.stringify(items));
-    }
-  }, [items, isHydrated]);
+  const [items, setItems] = useState<CartItem[]>(getInitialItems);
 
   useEffect(() => {
-    if (isHydrated) {
-      localStorage.setItem(DELIVERY_KEY, deliveryMode);
-    }
-  }, [deliveryMode, isHydrated]);
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
+  }, [items]);
 
-  const addToCart = (item: CartProduct) => {
-    setItems((prevItems) => {
-      const existing = prevItems.find((i) => i.id === item.id);
-      if (existing) {
-        return prevItems.map((i) =>
-          i.id === item.id
-            ? {
-                ...i,
-                image: getProductImage(item.id, item.category, item.image || i.image),
-                quantity: i.quantity + 1,
-                qty: i.qty + 1,
-              }
-            : i,
+  const addToCart = (product: Product) => {
+    setItems((currentItems) => {
+      const existingItem = currentItems.find((item) => item.id === product.id);
+
+      if (existingItem) {
+        return currentItems.map((item) =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
         );
       }
-      return [...prevItems, normalizeItem(item)];
+
+      return [...currentItems, { ...product, quantity: 1 }];
     });
   };
 
-  const addItem = (item: CartProduct) => addToCart(item);
-
   const removeFromCart = (id: string) => {
-    setItems((prevItems) => prevItems.filter((i) => i.id !== id));
+    setItems((currentItems) => currentItems.filter((item) => item.id !== id));
   };
-
-  const removeItem = removeFromCart;
 
   const updateQuantity = (id: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(id);
-    } else {
-      setItems((prevItems) =>
-        prevItems.map((i) => (i.id === id ? { ...i, quantity, qty: quantity } : i)),
-      );
+      return;
     }
-  };
 
-  const setQuantity = updateQuantity;
+    setItems((currentItems) =>
+      currentItems.map((item) => (item.id === id ? { ...item, quantity } : item)),
+    );
+  };
 
   const clearCart = () => {
     setItems([]);
   };
 
-  const setDeliveryMode = (mode: "Delivery" | "Pickup") => {
-    setDeliveryModeState(mode);
-  };
-
-  const totalItems = items.reduce((total, item) => total + item.quantity, 0);
-  const totalPrice = items.reduce((total, item) => total + item.price * item.quantity, 0);
-
-  const getTotalItems = () => totalItems;
-
-  return (
-    <CartContext.Provider
-      value={{
-        items,
-        deliveryMode,
-        totalItems,
-        totalPrice,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        addItem,
-        removeItem,
-        setQuantity,
-        clearCart,
-        setDeliveryMode,
-        getTotalItems,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+  const totalItems = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items],
   );
+
+  const totalPrice = useMemo(
+    () => roundToTwo(items.reduce((sum, item) => sum + item.price * item.quantity, 0)),
+    [items],
+  );
+
+  const deliveryFee = useMemo(() => (totalPrice >= 499 ? 0 : 40), [totalPrice]);
+
+  const tax = useMemo(() => roundToTwo(totalPrice * 0.05), [totalPrice]);
+
+  const grandTotal = useMemo(
+    () => roundToTwo(totalPrice + deliveryFee + tax),
+    [deliveryFee, tax, totalPrice],
+  );
+
+  const value = useMemo(
+    () => ({
+      items,
+      totalItems,
+      totalPrice,
+      deliveryFee,
+      tax,
+      grandTotal,
+      addToCart,
+      removeFromCart,
+      updateQuantity,
+      clearCart,
+    }),
+    [deliveryFee, grandTotal, items, tax, totalItems, totalPrice],
+  );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-export function useCartContext() {
+export function useCart() {
   const context = useContext(CartContext);
+
   if (!context) {
-    throw new Error("useCartContext must be used within CartProvider");
+    throw new Error("useCart must be used within CartProvider");
   }
+
   return context;
 }

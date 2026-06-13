@@ -1,11 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { RouterProvider } from "@tanstack/react-router";
+import { BrowserRouter } from "react-router-dom";
 
-import { getRouter } from "./router";
+// @ts-expect-error App is currently authored as a JavaScript entry module.
+import App from "./App.jsx";
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 import "./styles.css";
 
-const router = getRouter();
 const rootElement = document.getElementById("root");
 
 if (!rootElement) {
@@ -14,6 +16,12 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <BrowserRouter>
+      <AuthProvider>
+        <CartProvider>
+          <App />
+        </CartProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 );

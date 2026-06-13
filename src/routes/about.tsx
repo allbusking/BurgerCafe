@@ -1,12 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowDown,
-  Instagram,
-  Linkedin,
-  Trophy,
-  Flame,
-  Heart,
-} from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
+import { ArrowDown, Instagram, Linkedin, Trophy, Flame, Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Footer } from "@/components/Footer";
@@ -21,8 +15,7 @@ export const Route = createFileRoute("/about")({
       { title: "About — House of Tea Bubble & Burgers" },
       {
         name: "description",
-        content:
-          "The story, values, people, and obsession behind House of Tea Bubble & Burgers.",
+        content: "The story, values, people, and obsession behind House of Tea Bubble & Burgers.",
       },
     ],
   }),
@@ -137,7 +130,7 @@ const gallery = [
   },
 ];
 
-function AboutPage() {
+export function AboutPage() {
   return (
     <PageTransition>
       <div className="min-h-screen bg-background text-foreground">
@@ -174,17 +167,14 @@ function HeroSection() {
         </span>
         <h1 className="mt-8 font-display text-[18vw] leading-[0.83] text-cream sm:text-[13vw] md:text-[120px] lg:text-[150px]">
           <span className="block">WE DIDN&apos;T OPEN</span>
-          <span className="block text-stroke-neon text-transparent">
-            A CAFE.
-          </span>
+          <span className="block text-stroke-neon text-transparent">A CAFE.</span>
           <span className="mt-4 block text-[12vw] text-cream sm:text-[8vw] md:text-[78px] lg:text-[96px]">
             WE STARTED A MOVEMENT.
           </span>
         </h1>
         <p className="mx-auto mt-8 max-w-[600px] text-base leading-relaxed text-muted-foreground md:text-lg">
-          House of Tea Bubble &amp; Burgers was born from one obsession — food
-          that hits different. No shortcuts. No compromises. Just bold,
-          unapologetic flavor.
+          House of Tea Bubble &amp; Burgers was born from one obsession — food that hits different.
+          No shortcuts. No compromises. Just bold, unapologetic flavor.
         </p>
       </ScrollReveal>
 
@@ -209,9 +199,7 @@ function BrandStory() {
             />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(200,241,53,0.28),transparent_34%),linear-gradient(to_top,rgba(0,0,0,0.78),transparent_54%)]" />
             <div className="absolute bottom-8 left-8">
-              <p className="font-display text-7xl leading-none text-white md:text-8xl">
-                EST. 2024
-              </p>
+              <p className="font-display text-7xl leading-none text-white md:text-8xl">EST. 2024</p>
             </div>
           </div>
           <p className="mt-4 text-sm italic text-background/50">
@@ -229,19 +217,17 @@ function BrandStory() {
             </h2>
             <div className="mt-8 space-y-5 text-base leading-8 text-background/70 md:text-lg">
               <p>
-                It started with a single smash burger made at midnight. No
-                recipe book. Just instinct, heat, and a craving that
-                wouldn&apos;t quit. That burger changed everything.
+                It started with a single smash burger made at midnight. No recipe book. Just
+                instinct, heat, and a craving that wouldn&apos;t quit. That burger changed
+                everything.
               </p>
               <p>
-                We built House of Tea Bubble &amp; Burgers because we were
-                tired of settling. Tired of average food in average places. We
-                wanted every bite to feel like the first time.
+                We built House of Tea Bubble &amp; Burgers because we were tired of settling. Tired
+                of average food in average places. We wanted every bite to feel like the first time.
               </p>
               <p>
-                Today we serve thousands of customers across the city — but the
-                obsession hasn&apos;t changed. Same fire. Same flavors. Every
-                single day.
+                Today we serve thousands of customers across the city — but the obsession
+                hasn&apos;t changed. Same fire. Same flavors. Every single day.
               </p>
             </div>
           </div>
@@ -329,9 +315,7 @@ function TeamSection() {
                   className="h-full w-full object-cover"
                 />
               </div>
-              <h3 className="mt-6 text-xl font-extrabold text-background">
-                {member.name}
-              </h3>
+              <h3 className="mt-6 text-xl font-extrabold text-background">{member.name}</h3>
               <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-neon">
                 {member.role}
               </p>
@@ -354,13 +338,7 @@ function TeamSection() {
   );
 }
 
-function SocialButton({
-  children,
-  label,
-}: {
-  children: React.ReactNode;
-  label: string;
-}) {
+function SocialButton({ children, label }: { children: React.ReactNode; label: string }) {
   return (
     <button
       type="button"
@@ -384,10 +362,9 @@ function StatsSection() {
         {stats.map((stat, index) => (
           <ScrollReveal
             key={stat.label}
-            className={[
-              "text-center",
-              index > 0 ? "md:border-l md:border-background/30" : "",
-            ].join(" ")}
+            className={["text-center", index > 0 ? "md:border-l md:border-background/30" : ""].join(
+              " ",
+            )}
             delay={index * 80}
           >
             <CountUpStat {...stat} />

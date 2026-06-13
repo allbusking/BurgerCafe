@@ -1,21 +1,19 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Lock, ShieldCheck } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { useCartContext } from "@/context/CartContext";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { useAddresses, type AddressRecord } from "../hooks/useAddresses";
+import { usePlaceOrder } from "../hooks/useOrders";
+import supabase from "../lib/supabaseClient";
 import { LoadingButton } from "@/components/LoadingButton";
 import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/context/ToastContext";
-
-function computeTotals(items: { price: number; qty: number }[], mode: "Delivery" | "Pickup") {
-  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const delivery = mode === "Pickup" ? 0 : subtotal >= 499 || subtotal === 0 ? 0 : 40;
-  const gst = Math.round(subtotal * 0.05);
-  const total = subtotal + delivery + gst;
-  return { subtotal, delivery, gst, total };
-}
+import { calculateOrderTotals, formatPrice } from "../utils/formatPrice";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -54,78 +52,194 @@ type FormState = {
   instructions: string;
 };
 
-function CheckoutPage() {
-  const { items, deliveryMode, clearCart } = useCartContext();
-  const totals = computeTotals(items, deliveryMode);
+export function CheckoutPage() {
+  const { items, totalPrice, deliveryFee, tax, grandTotal, clearCart } = useCart();
+  const { placeOrder, loading } = usePlaceOrder();
+  const { user, profile } = useAuth();
+  const { addresses, addAddress } = useAddresses();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const [form, setForm] = useState<FormState>({
+  const [formData, setFormData] = useState<FormState & { deliveryType: "delivery" | "pickup" }>({
     name: "",
-    phone: "",
     email: "",
+    phone: "",
+    deliveryType: "delivery",
     address: "",
     instructions: "",
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof FormState | "deliveryType", string>>>(
+    {},
+  );
+  const [submitError, setSubmitError] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [saveAddress, setSaveAddress] = useState(false);
+  const deliveryMode = formData.deliveryType === "delivery" ? "Delivery" : "Pickup";
+  const hasSavedAddresses = Boolean(user?.id && addresses.length > 0);
+
+  const formatAddress = (address: AddressRecord) =>
+    `${address.address_line}, ${address.city}, ${address.state} - ${address.pincode}`;
+
+  const selectSavedAddress = (address: AddressRecord) => {
+    setSelectedAddressId(address.id);
+    setSaveAddress(false);
+    setFormData((current) => ({
+      ...current,
+      name: address.full_name,
+      phone: address.phone,
+      address: formatAddress(address),
+    }));
+    setErrors((current) => ({
+      ...current,
+      name: undefined,
+      phone: undefined,
+      address: undefined,
+    }));
+  };
 
   useEffect(() => {
-    if (items.length === 0) navigate({ to: "/menu" });
-  }, [items.length, navigate]);
+    if (items.length === 0) navigate("/menu");
+    if (user) {
+      setFormData((current) => ({
+        ...current,
+        email: user?.email || "",
+        name: profile?.full_name || "",
+        phone: profile?.phone || "",
+      }));
+    }
+  }, [items.length, navigate, profile?.full_name, profile?.phone, user]);
+
+  useEffect(() => {
+    if (!user?.id || addresses.length === 0 || selectedAddressId !== null) return;
+
+    const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0];
+    selectSavedAddress(defaultAddress);
+  }, [addresses, selectedAddressId, user?.id]);
 
   if (items.length === 0) {
     return null;
   }
 
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => {
-    setForm((f) => ({ ...f, [k]: v }));
+  const set = <K extends keyof typeof formData>(k: K, v: (typeof formData)[K]) => {
+    setFormData((f) => ({ ...f, [k]: v }));
     if (errors[k]) setErrors((e) => ({ ...e, [k]: undefined }));
+    setSubmitError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = () => {
+    const nextErrors: Partial<Record<keyof FormState | "deliveryType", string>> = {};
+
+    if (formData.name.trim().length < 2) {
+      nextErrors.name = "Name must be at least 2 characters";
+    }
+
+    if (!formData.email.trim()) {
+      nextErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      nextErrors.email = "Enter a valid email";
+    }
+
+    if (!/^[0-9]{10}$/.test(formData.phone)) {
+      nextErrors.phone = "Enter exactly 10 digits";
+    }
+
+    if (formData.deliveryType === "delivery" && !formData.address.trim()) {
+      nextErrors.address = "Address is required";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const schema = deliveryMode === "Delivery" ? deliverySchema : pickupSchema;
-    const result = schema.safeParse(form);
-    if (!result.success) {
-      const errs: Partial<Record<keyof FormState, string>> = {};
-      for (const issue of result.error.issues) {
-        const k = issue.path[0] as keyof FormState;
-        if (!errs[k]) errs[k] = issue.message;
-      }
-      setErrors(errs);
+    setSubmitError("");
+
+    if (!validateForm()) {
       return;
     }
-    setSubmitting(true);
-    setTimeout(() => {
-      const orderId = `HOT-2024-${String(Math.floor(1000 + Math.random() * 9000))}`;
-      const order = {
-        id: orderId,
-        items: items.map((i) => ({
-          id: i.id,
-          name: i.name,
-          category: i.category,
-          quantity: i.quantity,
-          qty: i.qty,
-          price: i.price,
-          image: i.image,
-        })),
-        total: totals.total,
-        address: deliveryMode === "Delivery" ? form.address : undefined,
-        mode: deliveryMode,
-        status: "Pending",
-        createdAt: new Date().toISOString(),
-      };
+
+    try {
+      const orderEmail = user?.email || formData.email;
+      const order = await placeOrder({
+        name: formData.name,
+        email: orderEmail,
+        phone: formData.phone,
+        deliveryType: formData.deliveryType,
+        address: formData.address,
+        instructions: formData.instructions,
+        items: items,
+        subtotal: totalPrice,
+        deliveryFee: deliveryFee,
+        tax: tax,
+        grandTotal: grandTotal,
+        userId: user?.id || null,
+      });
+
+      if (
+        user?.id &&
+        selectedAddressId === "manual" &&
+        saveAddress &&
+        formData.deliveryType === "delivery"
+      ) {
+        try {
+          await addAddress({
+            full_name: formData.name,
+            phone: formData.phone,
+            address_line: formData.address,
+            city: "",
+            state: "",
+            pincode: "",
+            address_type: "other",
+            is_default: addresses.length === 0,
+          });
+          showToast("Address saved for future orders", "success");
+        } catch (addressError) {
+          console.error("Failed to save address:", addressError);
+        }
+      }
+
       try {
-        localStorage.setItem("hotbb-last-order", JSON.stringify(order));
-        const rawOrders = localStorage.getItem("hotbb-orders-v1");
-        const orders = rawOrders ? JSON.parse(rawOrders) : [];
-        localStorage.setItem("hotbb-orders-v1", JSON.stringify([order, ...orders].slice(0, 20)));
-      } catch {}
+        await supabase.functions.invoke("send-order-email", {
+          body: {
+            to: orderEmail,
+            customerName: formData.name,
+            orderNumber: order.order_number,
+            items: items,
+            subtotal: totalPrice,
+            deliveryFee: deliveryFee,
+            total: grandTotal,
+            deliveryType: formData.deliveryType,
+            address: formData.address,
+            estimatedTime: order.estimated_time || 30,
+          },
+        });
+      } catch (emailError) {
+        console.error("Failed to send order email:", emailError);
+      }
+
+      if (user?.id && formData.phone.trim()) {
+        try {
+          await supabase
+            .from("profiles")
+            .update({
+              phone: formData.phone,
+              full_name: formData.name,
+            })
+            .eq("id", user.id);
+        } catch (profileError) {
+          console.error("Failed to update profile phone:", profileError);
+        }
+      }
+
+      sessionStorage.setItem("lastOrder", JSON.stringify(order));
       clearCart();
       showToast("Order placed successfully! 🎉", "success");
-      navigate({ to: "/order-confirmation" });
-    }, 1200);
+      navigate("/order-confirmation");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Could not place order. Try again.");
+      showToast("Could not place order. Try again.", "error");
+    }
   };
 
   return (
@@ -149,7 +263,7 @@ function CheckoutPage() {
               <div className="lg:col-span-3 space-y-5">
                 <Field
                   label="Full Name"
-                  value={form.name}
+                  value={formData.name}
                   onChange={(v) => set("name", v)}
                   error={errors.name}
                   placeholder="Aryan Mehra"
@@ -157,7 +271,7 @@ function CheckoutPage() {
                 <Field
                   label="Phone Number"
                   type="tel"
-                  value={form.phone}
+                  value={formData.phone}
                   onChange={(v) => set("phone", v)}
                   error={errors.phone}
                   placeholder="+91 98765 43210"
@@ -165,25 +279,119 @@ function CheckoutPage() {
                 <Field
                   label="Email Address"
                   type="email"
-                  value={form.email}
+                  value={formData.email}
                   onChange={(v) => set("email", v)}
                   error={errors.email}
                   placeholder="you@example.com"
+                  readOnly={Boolean(user?.email)}
                 />
                 {deliveryMode === "Delivery" && (
-                  <Field
-                    label="Delivery Address"
-                    multiline
-                    value={form.address}
-                    onChange={(v) => set("address", v)}
-                    error={errors.address}
-                    placeholder="Flat / House no., Street, Area, City, PIN"
-                  />
+                  <>
+                    {hasSavedAddresses && (
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            Saved Addresses
+                          </h2>
+                        </div>
+                        <div className="space-y-2">
+                          {addresses.map((address) => (
+                            <button
+                              key={address.id}
+                              type="button"
+                              onClick={() => selectSavedAddress(address)}
+                              className={[
+                                "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors",
+                                selectedAddressId === address.id
+                                  ? "border-neon bg-neon/5"
+                                  : "border-white/10 bg-white/[0.03] hover:border-white/20",
+                              ].join(" ")}
+                            >
+                              <span
+                                className={[
+                                  "mt-1 h-4 w-4 shrink-0 rounded-full border",
+                                  selectedAddressId === address.id
+                                    ? "border-neon bg-neon shadow-[inset_0_0_0_4px_#111]"
+                                    : "border-white/30",
+                                ].join(" ")}
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-bold text-foreground">
+                                    {address.full_name}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {address.phone}
+                                  </span>
+                                  {address.is_default && (
+                                    <span className="rounded-full bg-neon px-2 py-0.5 text-[10px] font-extrabold text-black">
+                                      DEFAULT
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="mt-1 block truncate text-xs text-muted-foreground">
+                                  {formatAddress(address)}
+                                </span>
+                              </span>
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedAddressId("manual");
+                              setSaveAddress(false);
+                              set("address", "");
+                            }}
+                            className={[
+                              "flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-semibold transition-colors",
+                              selectedAddressId === "manual"
+                                ? "border-neon bg-neon/5 text-neon"
+                                : "border-white/10 bg-white/[0.03] text-foreground/80 hover:border-white/20",
+                            ].join(" ")}
+                          >
+                            <span
+                              className={[
+                                "h-4 w-4 shrink-0 rounded-full border",
+                                selectedAddressId === "manual"
+                                  ? "border-neon bg-neon shadow-[inset_0_0_0_4px_#111]"
+                                  : "border-white/30",
+                              ].join(" ")}
+                            />
+                            Use a different address
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {(!hasSavedAddresses || selectedAddressId === "manual") && (
+                      <>
+                        <Field
+                          label="Delivery Address"
+                          multiline
+                          value={formData.address}
+                          onChange={(v) => set("address", v)}
+                          error={errors.address}
+                          placeholder="Flat / House no., Street, Area, City, PIN"
+                        />
+                        {user?.id && selectedAddressId === "manual" && (
+                          <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-foreground/80">
+                            <input
+                              type="checkbox"
+                              checked={saveAddress}
+                              onChange={(event) => setSaveAddress(event.target.checked)}
+                              className="h-4 w-4 accent-[#C8F135]"
+                            />
+                            Save this address for future orders
+                          </label>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
                 <Field
                   label="Special Instructions (optional)"
                   multiline
-                  value={form.instructions}
+                  value={formData.instructions}
                   onChange={(v) => set("instructions", v)}
                   error={errors.instructions}
                   placeholder="Extra spicy, no onions, ring twice..."
@@ -201,9 +409,9 @@ function CheckoutPage() {
                   <ul className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {items.map((i) => (
                       <li key={i.id} className="flex items-start justify-between gap-3 text-sm">
-                        {i.image && (
+                        {i.image_url && (
                           <img
-                            src={i.image}
+                            src={i.image_url}
                             alt={i.name}
                             loading="lazy"
                             className="h-12 w-12 shrink-0 rounded-xl object-cover"
@@ -212,36 +420,38 @@ function CheckoutPage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-foreground font-semibold truncate">{i.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {i.category} × {i.qty}
+                            {i.category} × {i.quantity}
                           </p>
                         </div>
                         <span className="font-display text-lg text-neon shrink-0">
-                          ₹{i.price * i.qty}
+                          ₹{i.price * i.quantity}
                         </span>
                       </li>
                     ))}
                   </ul>
 
                   <div className="border-t border-white/10 pt-4 space-y-2 text-sm">
-                    <Row label="Subtotal" value={`₹${totals.subtotal}`} />
+                    <Row label="Subtotal" value={formatPrice(totalPrice)} />
                     <Row
                       label="Delivery fee"
                       value={
-                        totals.delivery === 0 ? (
+                        deliveryFee === 0 ? (
                           <span className="text-neon font-bold">FREE</span>
                         ) : (
-                          `₹${totals.delivery}`
+                          formatPrice(deliveryFee)
                         )
                       }
                     />
-                    <Row label="GST (5%)" value={`₹${totals.gst}`} />
+                    <Row label="GST (5%)" value={formatPrice(tax)} />
                   </div>
 
                   <div className="pt-4 border-t border-white/10 flex items-end justify-between">
                     <span className="text-sm uppercase tracking-widest text-muted-foreground">
                       Total
                     </span>
-                    <span className="font-display text-4xl text-neon">₹{totals.total}</span>
+                    <span className="font-display text-4xl text-neon">
+                      {formatPrice(grandTotal)}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 p-3">
@@ -256,13 +466,19 @@ function CheckoutPage() {
                     </div>
                   </div>
 
+                  {submitError && <p className="text-sm text-red-500">{submitError}</p>}
+
                   <LoadingButton
                     type="submit"
-                    isLoading={submitting}
+                    disabled={loading}
                     className="fixed bottom-4 left-4 right-4 z-50 rounded-full bg-neon py-5 text-base font-extrabold text-black transition-all duration-300 hover:shadow-[0_0_28px_rgba(200,241,53,0.6)] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed lg:static lg:w-full"
                   >
-                    Place Order & Pay ₹{totals.total}
+                    {loading ? "Placing Order..." : "Place Order"}
                   </LoadingButton>
+
+                  <p className="text-center text-[11px] text-muted-foreground">
+                    💵 Pay with cash on delivery / pickup
+                  </p>
 
                   <p className="text-center text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
                     <Lock size={11} /> 100% Secure • Powered by Razorpay
@@ -296,6 +512,7 @@ function Field({
   placeholder,
   type = "text",
   multiline = false,
+  readOnly = false,
 }: {
   label: string;
   value: string;
@@ -304,6 +521,7 @@ function Field({
   placeholder?: string;
   type?: string;
   multiline?: boolean;
+  readOnly?: boolean;
 }) {
   const base =
     "min-h-12 w-full rounded-xl bg-white/5 border px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:bg-white/10";
@@ -330,6 +548,7 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          readOnly={readOnly}
           className={`${base} ${border}`}
         />
       )}

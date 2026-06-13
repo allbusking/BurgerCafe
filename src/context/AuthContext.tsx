@@ -6,97 +6,160 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 
-export interface AuthUser {
+import supabase from "../lib/supabaseClient";
+
+type Profile = {
   id: string;
-  email: string;
-  name: string;
-  role: "user" | "admin";
-}
+  full_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  phone?: string | null;
+  name?: string | null;
+  [key: string]: unknown;
+};
 
-interface AuthContextType {
-  user: AuthUser | null;
+type AuthContextValue = {
+  user: User | null;
+  profile: Profile | null;
+  isLoading: boolean;
   isLoggedIn: boolean;
   isAdmin: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<AuthUser>;
-  signup: (email: string, password: string, name: string) => Promise<AuthUser>;
-  logout: () => void;
-  loginWithGoogle: () => Promise<AuthUser>;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, fullName: string) => Promise<void>;
+  logout: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+async function fetchProfile(userId: string) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (error) return null;
+
+  return data as Profile;
 }
 
-const AUTH_KEY = "hotbb-user-v1";
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+async function saveProfileEmail(user: User, fullName?: string) {
+  if (!user.email) return;
 
-function makeUser(email: string, name?: string): AuthUser {
-  const adminEmails = ["admin@hotbb.in", "admin@houseoftea.in"];
-  return {
-    id: `user-${Date.now()}`,
-    email,
-    name: name?.trim() || email.split("@")[0] || "HOT B&B Fan",
-    role: adminEmails.includes(email.toLowerCase()) ? "admin" : "user",
-  };
+  await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      ...(fullName ? { full_name: fullName } : {}),
+    },
+    { onConflict: "id" },
+  );
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(AUTH_KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch (error) {
-      console.error("Failed to load auth session:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    let isMounted = true;
+
+    const updateAuthState = async (nextUser: User | null) => {
+      if (!isMounted) return;
+
+      setUser(nextUser);
+
+      if (nextUser) {
+        await saveProfileEmail(nextUser);
+        const nextProfile = await fetchProfile(nextUser.id);
+        if (isMounted) setProfile(nextProfile);
+      } else {
+        setProfile(null);
+      }
+    };
+
+    const loadSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      await updateAuthState(data.session?.user ?? null);
+      if (isMounted) setIsLoading(false);
+    };
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, session: Session | null) => {
+      await updateAuthState(session?.user ?? null);
+      if (isMounted) setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const persist = (nextUser: AuthUser | null) => {
-    setUser(nextUser);
-    if (nextUser) {
-      localStorage.setItem(AUTH_KEY, JSON.stringify(nextUser));
-      localStorage.setItem("hotbb-role", nextUser.role);
-    } else {
-      localStorage.removeItem(AUTH_KEY);
-      localStorage.removeItem("hotbb-role");
-    }
-  };
-
-  const value = useMemo<AuthContextType>(
+  const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      isLoggedIn: Boolean(user),
-      isAdmin: user?.role === "admin",
+      profile,
       isLoading,
-      login: async (email: string) => {
-        const nextUser = makeUser(email);
-        persist(nextUser);
-        return nextUser;
+      isLoggedIn: !!user,
+      isAdmin: profile?.role === "admin",
+      login: async (email: string, password: string) => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
       },
-      signup: async (email: string, _password: string, name: string) => {
-        const nextUser = makeUser(email, name);
-        persist(nextUser);
-        return nextUser;
+      signup: async (email: string, password: string, fullName: string) => {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              email,
+              full_name: fullName,
+            },
+          },
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          await saveProfileEmail(data.user, fullName);
+        }
       },
-      logout: () => persist(null),
+      logout: async () => {
+        await supabase.auth.signOut();
+      },
       loginWithGoogle: async () => {
-        const nextUser = makeUser("guest@hotbb.in", "Google Guest");
-        persist(nextUser);
-        return nextUser;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.origin,
+          },
+        });
+
+        if (error) throw error;
       },
     }),
-    [isLoading, user],
+    [isLoading, profile, user],
   );
+
+  if (isLoading) return null;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuthContext() {
+export function useAuth() {
   const context = useContext(AuthContext);
+
   if (!context) {
-    throw new Error("useAuthContext must be used within AuthProvider");
+    throw new Error("useAuth must be used within AuthProvider");
   }
+
   return context;
 }

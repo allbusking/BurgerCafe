@@ -1,22 +1,15 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Minus, Plus, Trash2, Truck, Store } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { useCartContext } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { EmptyCart } from "@/components/EmptyStates";
 import { LoadingButton } from "@/components/LoadingButton";
 import { PageTransition } from "@/components/PageTransition";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useState } from "react";
 import { useToast } from "@/context/ToastContext";
-
-function computeTotals(items: { price: number; qty: number }[], mode: "Delivery" | "Pickup") {
-  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const delivery = mode === "Pickup" ? 0 : subtotal >= 499 || subtotal === 0 ? 0 : 40;
-  const gst = Math.round(subtotal * 0.05);
-  const total = subtotal + delivery + gst;
-  return { subtotal, delivery, gst, total };
-}
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -37,16 +30,16 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   Combos: "from-lime-500 to-teal-800",
 };
 
-function CartPage() {
-  const { items, deliveryMode, setQuantity, removeItem, setDeliveryMode } = useCartContext();
+export function CartPage() {
+  const { items, totalPrice, deliveryFee, tax, grandTotal, updateQuantity, removeFromCart } =
+    useCart();
   const navigate = useNavigate();
   const [checkingOut, setCheckingOut] = useState(false);
   const { showToast } = useToast();
-  const totals = computeTotals(items, deliveryMode);
 
   const goToCheckout = () => {
     setCheckingOut(true);
-    setTimeout(() => navigate({ to: "/checkout" }), 350);
+    setTimeout(() => navigate("/checkout"), 350);
   };
 
   return (
@@ -75,9 +68,9 @@ function CartPage() {
                         <div
                           className={`relative h-24 w-24 shrink-0 rounded-xl bg-gradient-to-br ${CATEGORY_GRADIENTS[item.category] || "from-neutral-700 to-neutral-900"} overflow-hidden`}
                         >
-                          {item.image ? (
+                          {item.image_url ? (
                             <img
-                              src={item.image}
+                              src={item.image_url}
                               alt={item.name}
                               loading="lazy"
                               className="absolute inset-0 h-full w-full object-cover"
@@ -101,17 +94,17 @@ function CartPage() {
 
                           <div className="mt-auto flex items-center gap-2 pt-2">
                             <button
-                              onClick={() => setQuantity(item.id, item.qty - 1)}
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
                               aria-label="Decrease"
                               className="grid h-8 w-8 place-items-center rounded-full bg-neon/20 text-neon hover:bg-neon hover:text-black transition-colors"
                             >
                               <Minus size={14} strokeWidth={3} />
                             </button>
                             <span className="w-8 text-center font-bold text-foreground">
-                              {item.qty}
+                              {item.quantity}
                             </span>
                             <button
-                              onClick={() => setQuantity(item.id, item.qty + 1)}
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
                               aria-label="Increase"
                               className="grid h-8 w-8 place-items-center rounded-full bg-neon/20 text-neon hover:bg-neon hover:text-black transition-colors"
                             >
@@ -123,7 +116,7 @@ function CartPage() {
                         <div className="flex flex-col items-end justify-between">
                           <button
                             onClick={() => {
-                              removeItem(item.id);
+                              removeFromCart(item.id);
                               showToast("Item removed from cart", "neutral");
                             }}
                             aria-label="Remove"
@@ -132,7 +125,7 @@ function CartPage() {
                             <Trash2 size={18} />
                           </button>
                           <span className="font-display text-2xl text-neon">
-                            ₹{item.price * item.qty}
+                            ₹{item.price * item.quantity}
                           </span>
                         </div>
                       </div>
@@ -145,57 +138,32 @@ function CartPage() {
                   <div className="sticky top-28 rounded-3xl bg-[#1A1A1A] border border-white/10 p-6 space-y-5">
                     <h2 className="font-display text-3xl tracking-wide">ORDER SUMMARY</h2>
 
-                    {/* Toggle */}
-                    <div className="grid grid-cols-2 gap-1 p-1 rounded-full bg-white/5">
-                      {(["Delivery", "Pickup"] as const).map((m) => {
-                        const Icon = m === "Delivery" ? Truck : Store;
-                        const active = deliveryMode === m;
-                        return (
-                          <button
-                            key={m}
-                            onClick={() => setDeliveryMode(m)}
-                            className={[
-                              "flex items-center justify-center gap-2 rounded-full py-2 text-sm font-semibold transition-all",
-                              active
-                                ? "bg-neon text-black"
-                                : "text-muted-foreground hover:text-foreground",
-                            ].join(" ")}
-                          >
-                            <Icon size={14} />
-                            {m}
-                          </button>
-                        );
-                      })}
-                    </div>
-
                     <div className="space-y-2 text-sm">
-                      <Row label="Subtotal" value={`₹${totals.subtotal}`} />
+                      <Row label="Subtotal" value={`₹${totalPrice}`} />
                       <Row
                         label="Delivery fee"
                         value={
-                          totals.delivery === 0 ? (
+                          deliveryFee === 0 ? (
                             <span className="text-neon font-bold">FREE</span>
                           ) : (
-                            `₹${totals.delivery}`
+                            `₹${deliveryFee}`
                           )
                         }
                       />
-                      <Row label="GST (5%)" value={`₹${totals.gst}`} />
+                      <Row label="GST (5%)" value={`₹${tax}`} />
                     </div>
 
-                    {deliveryMode === "Delivery" &&
-                      totals.subtotal > 0 &&
-                      totals.subtotal < 499 && (
-                        <p className="text-xs text-muted-foreground">
-                          Add ₹{499 - totals.subtotal} more for FREE delivery 🚚
-                        </p>
-                      )}
+                    {totalPrice > 0 && totalPrice < 499 && (
+                      <p className="text-xs text-muted-foreground">
+                        Add ₹{499 - totalPrice} more for FREE delivery 🚚
+                      </p>
+                    )}
 
                     <div className="pt-4 border-t border-white/10 flex items-end justify-between">
                       <span className="text-sm uppercase tracking-widest text-muted-foreground">
                         Total
                       </span>
-                      <span className="font-display text-4xl text-neon">₹{totals.total}</span>
+                      <span className="font-display text-4xl text-neon">₹{grandTotal}</span>
                     </div>
 
                     <LoadingButton

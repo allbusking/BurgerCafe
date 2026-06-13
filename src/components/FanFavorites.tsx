@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Star } from "lucide-react";
-import { useCartContext } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { LoadingButton } from "@/components/LoadingButton";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { useToast } from "@/context/ToastContext";
@@ -80,7 +80,7 @@ export function FanFavorites() {
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [adding, setAdding] = useState<Record<string, boolean>>({});
   const [added, setAdded] = useState<Record<string, boolean>>({});
-  const { addItem } = useCartContext();
+  const { addToCart } = useCart();
   const { showToast } = useToast();
 
   const checkScroll = () => {
@@ -103,11 +103,12 @@ export function FanFavorites() {
 
   const handleAdd = (product: (typeof products)[number]) => {
     setAdding((s) => ({ ...s, [product.id]: true }));
-    addItem({
+    addToCart({
       id: product.id,
       name: product.name,
       category: product.category,
       price: product.price,
+      image_url: product.image,
     });
     showToast("Item added to cart! 🍔", "success");
     window.setTimeout(() => {
@@ -123,11 +124,7 @@ export function FanFavorites() {
         className="pointer-events-none absolute left-0 right-0 top-px z-0 -translate-y-full leading-[0]"
         aria-hidden="true"
       >
-        <svg
-          viewBox="0 0 1440 90"
-          preserveAspectRatio="none"
-          className="h-16 w-full md:h-24"
-        >
+        <svg viewBox="0 0 1440 90" preserveAspectRatio="none" className="h-16 w-full md:h-24">
           <path
             d="M0 38C96 55 188 62 292 53C426 42 548 12 684 27C815 42 905 68 1076 58C1211 50 1322 38 1440 50V90H0V38Z"
             fill="var(--background)"
@@ -138,11 +135,7 @@ export function FanFavorites() {
         className="pointer-events-none absolute bottom-0 left-0 right-0 z-0 translate-y-px leading-[0]"
         aria-hidden="true"
       >
-        <svg
-          viewBox="0 0 1440 90"
-          preserveAspectRatio="none"
-          className="h-16 w-full md:h-24"
-        >
+        <svg viewBox="0 0 1440 90" preserveAspectRatio="none" className="h-16 w-full md:h-24">
           <path
             d="M0 48C120 35 229 43 356 52C520 64 624 78 773 49C911 23 1030 33 1162 49C1265 62 1357 58 1440 42V90H0V48Z"
             fill="var(--cream)"
@@ -206,79 +199,75 @@ export function FanFavorites() {
               className="shrink-0 snap-start"
               delay={Math.min(index * 60, 300)}
             >
-            <div
-              className="group relative flex w-[280px] flex-col overflow-hidden rounded-2xl bg-[#1A1A1A] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_0_40px_rgba(200,241,53,0.15)] sm:w-[300px]"
-            >
-              {/* Hover glow border */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-                <div
-                  className="absolute inset-0 rounded-2xl"
-                  style={{
-                    boxShadow: "inset 0 0 0 1.5px rgba(200,241,53,0.25)",
-                  }}
-                />
-              </div>
+              <div className="group relative flex w-[280px] flex-col overflow-hidden rounded-2xl bg-[#1A1A1A] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_0_40px_rgba(200,241,53,0.15)] sm:w-[300px]">
+                {/* Hover glow border */}
+                <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                  <div
+                    className="absolute inset-0 rounded-2xl"
+                    style={{
+                      boxShadow: "inset 0 0 0 1.5px rgba(200,241,53,0.25)",
+                    }}
+                  />
+                </div>
 
-              {/* Image area */}
-              <div
-                className="relative h-[250px] w-full overflow-hidden [mask-image:linear-gradient(to_bottom,black_0%,black_78%,transparent_100%)] sm:h-[280px]"
-                style={{ background: product.gradient }}
-              >
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  width={1024}
-                  height={1024}
-                  loading="lazy"
-                  className="absolute inset-0 h-full w-full object-cover opacity-95 transition-transform duration-700 group-hover:scale-110"
-                />
+                {/* Image area */}
                 <div
-                  className="absolute inset-0 opacity-45 mix-blend-multiply"
+                  className="relative h-[250px] w-full overflow-hidden [mask-image:linear-gradient(to_bottom,black_0%,black_78%,transparent_100%)] sm:h-[280px]"
                   style={{ background: product.gradient }}
-                />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_22%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(to_top,rgba(0,0,0,0.45),transparent_55%)]" />
+                >
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    width={1024}
+                    height={1024}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover opacity-95 transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div
+                    className="absolute inset-0 opacity-45 mix-blend-multiply"
+                    style={{ background: product.gradient }}
+                  />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_22%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(to_top,rgba(0,0,0,0.45),transparent_55%)]" />
 
-                {/* Badge */}
-                <span className="absolute left-3 top-3 z-10 inline-flex items-center rounded-full bg-neon px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-background">
-                  {product.badge}
-                </span>
-              </div>
-
-              {/* Content */}
-              <div className="relative z-10 flex flex-1 flex-col p-5">
-                <span className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-cream/40">
-                  {product.category}
-                </span>
-
-                <h3 className="mb-2 text-base font-bold leading-tight text-cream sm:text-lg">
-                  {product.name}
-                </h3>
-
-                <div className="mb-4 flex items-center gap-1.5">
-                  <span className="text-lg font-extrabold text-neon">
-                    ₹{product.price}
-                  </span>
-                  <span className="mx-1.5 h-3 w-px bg-cream/15" />
-                  <Star className="h-3.5 w-3.5 fill-amber-glow text-amber-glow" />
-                  <span className="text-[13px] font-semibold text-cream/70">
-                    {product.rating}
+                  {/* Badge */}
+                  <span className="absolute left-3 top-3 z-10 inline-flex items-center rounded-full bg-neon px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-background">
+                    {product.badge}
                   </span>
                 </div>
 
-                {/* Add to Cart button */}
-                <LoadingButton
-                  isLoading={adding[product.id]}
-                  onClick={() => handleAdd(product)}
-                  className={[
-                    "mt-auto flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-extrabold uppercase tracking-wider text-background transition-all duration-300 hover:shadow-[0_0_20px_rgba(200,241,53,0.4)] hover:scale-[1.02] active:scale-[0.98]",
-                    added[product.id] ? "bg-emerald-500" : "bg-neon",
-                  ].join(" ")}
-                >
-                  {added[product.id] ? "Added" : "Add to Cart"}
-                  <Plus className="h-4 w-4" strokeWidth={3} />
-                </LoadingButton>
+                {/* Content */}
+                <div className="relative z-10 flex flex-1 flex-col p-5">
+                  <span className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-cream/40">
+                    {product.category}
+                  </span>
+
+                  <h3 className="mb-2 text-base font-bold leading-tight text-cream sm:text-lg">
+                    {product.name}
+                  </h3>
+
+                  <div className="mb-4 flex items-center gap-1.5">
+                    <span className="text-lg font-extrabold text-neon">₹{product.price}</span>
+                    <span className="mx-1.5 h-3 w-px bg-cream/15" />
+                    <Star className="h-3.5 w-3.5 fill-amber-glow text-amber-glow" />
+                    <span className="text-[13px] font-semibold text-cream/70">
+                      {product.rating}
+                    </span>
+                  </div>
+
+                  {/* Add to Cart button */}
+                  <LoadingButton
+                    isLoading={adding[product.id]}
+                    onClick={() => handleAdd(product)}
+                    className={[
+                      "mt-auto flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-extrabold uppercase tracking-wider text-background transition-all duration-300 hover:shadow-[0_0_20px_rgba(200,241,53,0.4)] hover:scale-[1.02] active:scale-[0.98]",
+                      added[product.id] ? "bg-emerald-500" : "bg-neon",
+                    ].join(" ")}
+                  >
+                    {added[product.id] ? "Added" : "Add to Cart"}
+                    <Plus className="h-4 w-4" strokeWidth={3} />
+                  </LoadingButton>
+                </div>
               </div>
-            </div>
             </ScrollReveal>
           ))}
         </div>

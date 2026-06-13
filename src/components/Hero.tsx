@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { ArrowRight, Star, Zap } from "lucide-react";
 import heroBurger from "@/assets/hero-burger.png";
 

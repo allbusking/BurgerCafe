@@ -1,22 +1,3 @@
-export function formatPrice(amount: number) {
-  return `₹${Math.round(amount)}`;
-}
-
-export function formatDate(dateString: string) {
-  const date = new Date(dateString);
-  const formattedDate = date.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  const formattedTime = date.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  return `${formattedDate}, ${formattedTime}`;
-}
-
 export function getStatusColor(status: string) {
   switch (status) {
     case "pending":
@@ -45,7 +26,7 @@ export function getStatusLabel(status: string) {
     case "preparing":
       return "Being Prepared";
     case "ready":
-      return "Ready";
+      return "Ready for Pickup/Delivery";
     case "delivered":
       return "Delivered";
     case "cancelled":
@@ -55,4 +36,28 @@ export function getStatusLabel(status: string) {
   }
 }
 
-export { calculateOrderTotals } from "./orderUtils";
+type OrderItem = {
+  price: number;
+  quantity?: number;
+  qty?: number;
+};
+
+function roundToTwo(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+export function calculateOrderTotals(items: OrderItem[]) {
+  const subtotal = roundToTwo(
+    items.reduce((sum, item) => sum + item.price * (item.quantity ?? item.qty ?? 1), 0),
+  );
+  const deliveryFee = subtotal >= 499 ? 0 : 40;
+  const tax = roundToTwo(subtotal * 0.05);
+  const total = roundToTwo(subtotal + deliveryFee + tax);
+
+  return {
+    subtotal,
+    deliveryFee,
+    tax,
+    total,
+  };
+}

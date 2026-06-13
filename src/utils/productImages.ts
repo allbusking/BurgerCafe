@@ -49,10 +49,43 @@ const PRODUCT_IMAGES: Record<string, string> = {
   co4: categoryBurgerImg,
 };
 
-export function getProductImage(id?: string, category?: string, image?: string) {
+const PRODUCT_NAME_IMAGES: Record<string, string> = {
+  "smash double burger": productSmashBurgerImg,
+  "tower burger": productTowerBurgerImg,
+  "crispy chicken burger": categoryBurgerImg,
+  "bbq bacon burger": productSmashBurgerImg,
+  "mushroom swiss burger": categoryBurgerImg,
+  "spicy jalapeno burger": productTowerBurgerImg,
+  "spicy jalapeño burger": productTowerBurgerImg,
+  "classic chicken shawarma": productShawarmaImg,
+  "beef cheese shawarma": productBeefShawarmaImg,
+  "garlic chicken shawarma": categoryShawarmaImg,
+  "double meat shawarma": productBeefShawarmaImg,
+  "taro bubble tea": productTaroBobaImg,
+  "brown sugar milk tea": categoryBubbleTeaImg,
+  "matcha latte": productTaroBobaImg,
+  "strawberry burst": categoryBubbleTeaImg,
+  "thai milk tea": productTaroBobaImg,
+  "mango passion": categoryBubbleTeaImg,
+  espresso: categoryCoffeeImg,
+  cappuccino: categoryCoffeeImg,
+  "flat white": productOreoCoffeeImg,
+  americano: categoryCoffeeImg,
+  "oreo cold coffee": productOreoCoffeeImg,
+  "caramel cold coffee": productOreoCoffeeImg,
+  "hazelnut cold coffee": categoryCoffeeImg,
+  "classic cold coffee": productOreoCoffeeImg,
+  "burger + bubble tea combo": productSmashBurgerImg,
+  "shawarma + cold coffee combo": productShawarmaImg,
+  "double trouble": productTowerBurgerImg,
+  "family feast": categoryBurgerImg,
+};
+
+export function getProductImage(id?: string, category?: string, image?: string, name?: string) {
   return (
     image ||
     (id ? PRODUCT_IMAGES[id] : undefined) ||
+    (name ? PRODUCT_NAME_IMAGES[name.toLowerCase()] : undefined) ||
     (category ? CATEGORY_IMAGES[category] : undefined)
   );
 }

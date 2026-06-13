@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { ShoppingBag, Search, Package } from "lucide-react";
 
 type AppRoute =

@@ -25,24 +25,24 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: Index,
+  component: HomePage,
 });
 
-function Index() {
+export function HomePage() {
   return (
     <PageTransition>
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
-      <main>
-        <Hero />
-        <MarqueeStrip />
-        <WhatWeServe />
-        <FanFavorites />
-        <HowItWorks />
-        <Testimonials />
-      </main>
-      <Footer />
-    </div>
+      <div className="min-h-screen bg-background text-foreground">
+        <Navbar />
+        <main>
+          <Hero />
+          <MarqueeStrip />
+          <WhatWeServe />
+          <FanFavorites />
+          <HowItWorks />
+          <Testimonials />
+        </main>
+        <Footer />
+      </div>
     </PageTransition>
   );
 }
