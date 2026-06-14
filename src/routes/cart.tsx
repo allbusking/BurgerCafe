@@ -169,7 +169,7 @@ export function CartPage() {
                     <LoadingButton
                       isLoading={checkingOut}
                       onClick={goToCheckout}
-                      className="fixed bottom-4 left-4 right-4 z-50 rounded-full bg-neon py-4 text-base font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.55)] hover:scale-[1.02] active:scale-95 disabled:opacity-70 lg:static lg:w-full"
+                      className="fixed bottom-safe-4 left-4 right-4 z-50 rounded-full bg-neon py-4 text-base font-bold text-black transition-all duration-300 hover:shadow-[0_0_24px_rgba(200,241,53,0.55)] hover:scale-[1.02] active:scale-95 disabled:opacity-70 lg:static lg:w-full"
                     >
                       Proceed to Checkout
                     </LoadingButton>

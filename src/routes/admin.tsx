@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Clock,
   IndianRupee,
+  Store,
 } from "lucide-react";
 import { LoadingButton } from "@/components/LoadingButton";
 import { PageTransition } from "@/components/PageTransition";
@@ -56,7 +57,7 @@ export function AdminDashboard() {
     <PageTransition>
       <div className="min-h-screen flex bg-[#111111] text-foreground">
         <Sidebar section={section} setSection={setSection} />
-        <main className="flex-1 min-h-screen pb-24 md:ml-[260px] md:pb-0">
+        <main className="flex-1 min-h-screen pb-28 md:ml-[260px] md:pb-0">
           <TopBar section={section} />
           <div className="p-4 md:p-8">
             {section === "dashboard" && <Dashboard />}
@@ -109,7 +110,7 @@ function Sidebar({ section, setSection }: { section: Section; setSection: (s: Se
         </span>
       </div>
 
-      <nav className="flex md:flex-1 gap-1 md:block px-2 md:px-3 py-2 md:py-4 md:space-y-1 overflow-x-auto md:overflow-y-auto">
+      <nav className="scrollbar-hide flex md:flex-1 gap-1 md:block px-2 md:px-3 py-2 pb-safe md:py-4 md:space-y-1 overflow-x-auto md:overflow-y-auto">
         {NAV.map((n) => {
           const active = section === n.id;
           return (
@@ -159,6 +160,7 @@ function Sidebar({ section, setSection }: { section: Section; setSection: (s: Se
 }
 
 function TopBar({ section }: { section: Section }) {
+  const navigate = useNavigate();
   const titles: Record<Section, string> = {
     dashboard: "Dashboard",
     orders: "Orders",
@@ -180,8 +182,19 @@ function TopBar({ section }: { section: Section }) {
           })}
         </p>
       </div>
-      <div className="hidden sm:flex items-center gap-2 text-xs text-foreground/50">
-        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> System online
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="inline-flex !h-10 !w-10 !min-h-10 !min-w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] p-0 text-xs font-semibold text-foreground/80 transition-colors hover:border-neon/60 hover:bg-neon hover:text-black active:scale-95 sm:!w-auto sm:gap-2 sm:px-3"
+          aria-label="Visit website"
+        >
+          <Store size={14} />
+          <span className="hidden sm:inline">Visit Website</span>
+        </button>
+        <div className="hidden sm:flex items-center gap-2 text-xs text-foreground/50">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> System online
+        </div>
       </div>
     </header>
   );
@@ -423,7 +436,55 @@ function OrdersTable({
   };
 
   return (
-    <div className="overflow-x-auto md:overflow-visible">
+    <>
+      <div className="space-y-3 p-4 md:hidden">
+        {data.map((o) => {
+          const isOpen = openId === o.id;
+          return (
+            <article
+              key={o.id}
+              onClick={() => expandable && setOpenId(isOpen ? null : o.id)}
+              className={`rounded-2xl border border-white/5 bg-black/20 p-4 transition-colors ${expandable ? "cursor-pointer" : ""} hover:border-white/10`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-neon">{o.id}</p>
+                  <p className="mt-2 truncate text-sm font-semibold">{o.customer}</p>
+                  <p className="mt-1 truncate text-xs text-foreground/50">{o.customerEmail}</p>
+                </div>
+                <StatusBadge status={o.status} />
+              </div>
+
+              <p className="mt-3 text-sm leading-6 text-foreground/70">
+                {o.items.map((item) => `${item.name} x ${item.qty}`).join(", ")}
+              </p>
+
+              {expandable && isOpen && (
+                <div className="mt-4 space-y-2 rounded-xl bg-black/25 p-3">
+                  {o.items.map((it, i) => (
+                    <div key={i} className="flex justify-between gap-3 text-xs text-foreground/80">
+                      <span>
+                        {it.name} × {it.qty}
+                      </span>
+                      <span className="shrink-0">{formatPrice(it.price * it.qty)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/5 pt-4">
+                <div>
+                  <p className="font-semibold">{formatPrice(o.total)}</p>
+                  <p className="mt-1 text-xs text-foreground/50">{o.time}</p>
+                </div>
+                <StatusDropdown current={o.status} onChange={(s) => setStatus(o.id, s)} />
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block md:overflow-visible">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-wider text-foreground/40 border-b border-white/5">
@@ -485,7 +546,8 @@ function OrdersTable({
           );
         })}
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -553,8 +615,8 @@ function Orders() {
       subtitle={`${filtered.length} order${filtered.length === 1 ? "" : "s"} found`}
       allowOverflow
       action={
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex w-full items-center gap-3 sm:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Search
               size={14}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40"
@@ -563,13 +625,13 @@ function Orders() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search ID or customer…"
-              className="w-64 rounded-md bg-white/5 border border-white/10 pl-9 pr-3 py-2 text-xs outline-none focus:border-neon"
+              className="w-full rounded-md bg-white/5 border border-white/10 pl-9 pr-3 py-2 text-xs outline-none focus:border-neon sm:w-64"
             />
           </div>
         </div>
       }
     >
-      <div className="px-6 pt-4 flex flex-wrap gap-2">
+      <div className="px-4 pt-4 flex flex-wrap gap-2 md:px-6">
         {(["All", "pending", "confirmed", "preparing", "ready", "delivered", "cancelled"] as const).map((f) => (
           <button
             key={f}
@@ -710,14 +772,14 @@ function Toggle({
   label?: string;
 }) {
   return (
-    <label className="inline-flex min-w-[124px] items-center gap-3 cursor-pointer">
+    <label className="inline-flex items-center gap-3 cursor-pointer">
       <button
         type="button"
         onClick={onChange}
-        className={`relative h-5 w-10 shrink-0 rounded-full transition-colors ${checked ? "bg-neon" : "bg-white/10"}`}
+        className={`relative !h-6 !w-11 !min-h-6 !min-w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-neon" : "bg-white/10"}`}
       >
         <span
-          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-black transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`}
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-black transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`}
         />
       </button>
       <span className="whitespace-nowrap text-xs text-foreground/70">
@@ -974,7 +1036,50 @@ function Customers() {
   const { customers, loading } = useAdminCustomers();
   return (
     <Panel title="Customers" subtitle={`${customers.length} active customers`}>
-      <div className="overflow-x-auto">
+      <div className="space-y-3 p-4 md:hidden">
+        {loading &&
+          Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="rounded-2xl border border-white/5 bg-black/20 p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-4 w-32 animate-pulse rounded bg-white/10" />
+                  <div className="h-3 w-44 animate-pulse rounded bg-white/10" />
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="h-12 animate-pulse rounded-xl bg-white/10" />
+                <div className="h-12 animate-pulse rounded-xl bg-white/10" />
+              </div>
+            </div>
+          ))}
+        {!loading &&
+          customers.map((c) => (
+            <article key={c.id} className="rounded-2xl border border-white/5 bg-black/20 p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-neon/20 text-xs font-bold text-neon">
+                  {c.name[0]}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{c.name}</p>
+                  <p className="mt-1 truncate text-xs text-foreground/50">{c.email}</p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-xl bg-white/[0.04] p-3">
+                  <p className="uppercase tracking-wider text-foreground/40">Orders</p>
+                  <p className="mt-1 text-base font-semibold">{c.orders}</p>
+                </div>
+                <div className="rounded-xl bg-white/[0.04] p-3">
+                  <p className="uppercase tracking-wider text-foreground/40">Lifetime Value</p>
+                  <p className="mt-1 text-base font-semibold text-neon">{formatPrice(c.spent)}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-foreground/40 border-b border-white/5">

@@ -111,6 +111,7 @@
 
   html {
     scroll-behavior: smooth;
+    min-width: 0;
   }
 
   ::selection {
@@ -144,6 +145,20 @@
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
     position: relative;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  #root {
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
   }
 
   /* Subtle grain/noise overlay */
@@ -216,6 +231,23 @@
     50% { transform: scale(1.15); }
   }
   .animate-badge-pulse { animation: badge-pulse 2s ease-in-out infinite; }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .bottom-safe-4 {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 
   @keyframes toast-in {
     0% { opacity: 0; transform: translateX(24px); }

@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "react-router-dom";
-import { ArrowDown, Instagram, Linkedin, Trophy, Flame, Heart } from "lucide-react";
+import {
+  ArrowDown,
+  Instagram,
+  Linkedin,
+  Trophy,
+  Flame,
+  Heart,
+  MapPin,
+  ExternalLink,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Footer } from "@/components/Footer";
@@ -144,6 +153,7 @@ export function AboutPage() {
           <StatsSection />
           <GallerySection />
           <CtaSection />
+          <LocationSection />
         </main>
         <Footer />
       </div>
@@ -501,6 +511,61 @@ function CtaSection() {
           ⭐ 4.9 rated • 10,000+ orders delivered • Fresh every day
         </p>
       </ScrollReveal>
+    </section>
+  );
+}
+
+function LocationSection() {
+  const mapsLocationUrl =
+    "https://www.google.com/maps/place/House+of+Shawarma/@27.1855924,88.4982782,15z/data=!4m6!3m5!1s0x39e6a14e5176425d:0xe26fa48af90f3e3!8m2!3d27.1855924!4d88.4982781";
+
+  return (
+    <section className="bg-background px-4 py-24 md:py-32">
+      <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-stretch">
+        <ScrollReveal>
+          <div className="flex h-full flex-col justify-between rounded-3xl border border-white/5 bg-[#161616] p-6 md:p-8">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-neon px-4 py-2 text-xs font-extrabold uppercase tracking-[0.18em] text-background">
+                <MapPin className="h-4 w-4" />
+                Find Us
+              </span>
+              <h2 className="mt-7 font-display text-5xl leading-none text-cream md:text-7xl">
+                HOUSE OF SHAWARMA
+              </h2>
+              <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
+                Siliguri, West Bengal. Visit us, pick up your order, or use the map for
+                directions.
+              </p>
+            </div>
+
+            <a
+              href={mapsLocationUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-neon px-6 py-4 text-sm font-extrabold uppercase tracking-wider text-background transition-all duration-300 hover:shadow-neon active:scale-95 sm:w-fit"
+            >
+              Open Directions
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+        </ScrollReveal>
+
+        <ScrollReveal delay={120}>
+          <div className="overflow-hidden rounded-3xl border border-neon/30 bg-[#161616] shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+            <iframe
+              title="House of Shawarma map"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d8216.462633209028!2d88.49827817589414!3d27.18559244830948!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39e6a14e5176425d%3A0xe26fa48af90f3e3!2sHouse%20of%20Shawarma!5e1!3m2!1sen!2sin!4v1781463801345!5m2!1sen!2sin"
+              width="100%"
+              height="520"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="h-[420px] w-full border-0 md:h-[520px]"
+            />
+          </div>
+        </ScrollReveal>
+      </div>
     </section>
   );
 }

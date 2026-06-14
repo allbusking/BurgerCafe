@@ -471,7 +471,7 @@ export function CheckoutPage() {
                   <LoadingButton
                     type="submit"
                     disabled={loading}
-                    className="fixed bottom-4 left-4 right-4 z-50 rounded-full bg-neon py-5 text-base font-extrabold text-black transition-all duration-300 hover:shadow-[0_0_28px_rgba(200,241,53,0.6)] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed lg:static lg:w-full"
+                    className="fixed bottom-safe-4 left-4 right-4 z-50 rounded-full bg-neon py-5 text-base font-extrabold text-black transition-all duration-300 hover:shadow-[0_0_28px_rgba(200,241,53,0.6)] hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed lg:static lg:w-full"
                   >
                     {loading ? "Placing Order..." : "Place Order"}
                   </LoadingButton>

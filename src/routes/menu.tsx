@@ -158,10 +158,10 @@ export function MenuPage() {
         </section>
 
         {/* STICKY FILTER + SEARCH BAR */}
-        <div className="sticky top-0 z-[55] border-y border-white/10 bg-background/90 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+        <div className="sticky top-0 z-40 border-y border-white/10 bg-background/90 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
           <div className="mx-auto max-w-7xl px-4 py-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
             {/* Filters */}
-            <div className="flex-1 -mx-1 overflow-x-auto">
+            <div className="scrollbar-hide flex-1 -mx-1 overflow-x-auto">
               <div className="flex gap-2 px-1 min-w-max">
                 <button
                   onClick={() => setActiveCategory(null)}
@@ -214,7 +214,7 @@ export function MenuPage() {
         {/* PRODUCT GRID */}
         <section className="mx-auto max-w-7xl px-4 py-12 md:py-16">
           {loading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {Array.from({ length: 9 }).map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
@@ -241,7 +241,7 @@ export function MenuPage() {
           ) : (
             <div
               key={`${activeCategory ?? "all"}-${query}`}
-              className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6"
             >
               {filtered.map((p, i) => (
                 <ScrollReveal key={p.id} delay={Math.min(i * 45, 360)}>

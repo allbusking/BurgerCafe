@@ -235,13 +235,13 @@ export function Navbar() {
             </Link>
 
             {/* Mobile nav links */}
-            <ul className="flex flex-col gap-1 flex-1">
+            <ul className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
               {NAV.map((item, i) => (
-                <li key={item.label}>
+                <li key={item.label} className="w-full max-w-sm">
                   <Link
                     to={item.to}
                     onClick={() => setOpen(false)}
-                    className="block py-3 md:py-4 text-2xl md:text-4xl font-display text-foreground/80 hover:text-neon transition-colors"
+                    className="block w-full rounded-full border border-white/10 bg-white/[0.03] px-6 py-4 text-3xl font-display text-foreground/90 transition-all hover:border-neon/60 hover:bg-neon hover:text-black active:scale-95 md:py-5 md:text-5xl"
                     style={{ animationDelay: `${i * 50}ms` }}
                   >
                     {item.label}
@@ -249,22 +249,33 @@ export function Navbar() {
                 </li>
               ))}
               {isLoggedIn && (
-                <li>
-                  <Link
-                    to="/my-orders"
-                    onClick={() => setOpen(false)}
-                    className="block py-3 md:py-4 text-2xl md:text-4xl font-display text-foreground/80 hover:text-neon transition-colors"
-                  >
-                    My Orders
-                  </Link>
-                </li>
+                <>
+                  <li className="w-full max-w-sm">
+                    <Link
+                      to="/my-orders"
+                      onClick={() => setOpen(false)}
+                      className="block w-full rounded-full border border-white/10 bg-white/[0.03] px-6 py-4 text-3xl font-display text-foreground/90 transition-all hover:border-neon/60 hover:bg-neon hover:text-black active:scale-95 md:py-5 md:text-5xl"
+                    >
+                      My Orders
+                    </Link>
+                  </li>
+                  <li className="w-full max-w-sm">
+                    <Link
+                      to="/my-addresses"
+                      onClick={() => setOpen(false)}
+                      className="block w-full rounded-full border border-white/10 bg-white/[0.03] px-6 py-4 text-3xl font-display text-foreground/90 transition-all hover:border-neon/60 hover:bg-neon hover:text-black active:scale-95 md:py-5 md:text-5xl"
+                    >
+                      My Addresses
+                    </Link>
+                  </li>
+                </>
               )}
               {isAdmin && (
-                <li>
+                <li className="w-full max-w-sm">
                   <Link
                     to="/admin"
                     onClick={() => setOpen(false)}
-                    className="block py-3 md:py-4 text-2xl md:text-4xl font-display text-foreground/80 hover:text-neon transition-colors"
+                    className="block w-full rounded-full border border-white/10 bg-white/[0.03] px-6 py-4 text-3xl font-display text-foreground/90 transition-all hover:border-neon/60 hover:bg-neon hover:text-black active:scale-95 md:py-5 md:text-5xl"
                   >
                     Admin
                   </Link>
