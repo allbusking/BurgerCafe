@@ -73,7 +73,7 @@ export function Footer() {
               <li className="flex gap-3 items-start">
                 <MapPin className="w-5 h-5 text-neon/70 mt-0.5 flex-shrink-0" />
                 <span className="font-body text-cream/70 text-sm leading-relaxed">
-                  123 Food Street, Bandra West, Mumbai 400050
+                Majitar, Rangpo, Sikkim 737136
                 </span>
               </li>
               <li className="flex gap-3 items-center">

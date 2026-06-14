@@ -128,7 +128,7 @@ export function Testimonials() {
               <span className="text-neon">WE&apos;RE A CULTURE.</span>
             </h3>
             <p className="mt-6 text-muted-foreground text-lg md:text-xl font-body leading-relaxed max-w-lg">
-              Born in Mumbai, built for flavor lovers. Every item on our menu is crafted with obsession-level care.
+              Born in Sikkim, built for flavor lovers. Every item on our menu is crafted with obsession-level care.
             </p>
           </div>
 

@@ -14,7 +14,7 @@ export function Hero() {
         <div className="relative z-10">
           <div className="animate-slide-up inline-flex items-center gap-2 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground shadow-neon" style={{ animationDelay: "0.05s" }}>
             <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
-            Est. 2024 • Mumbai's Finest
+            Est. 2025 • Sikkim's Finest
           </div>
 
           <h1 className="mt-6 font-display text-[14vw] leading-[0.85] sm:text-[10vw] lg:text-[7.5vw] xl:text-[120px]">
@@ -53,7 +53,7 @@ export function Hero() {
             <Star className="h-3.5 w-3.5 fill-primary text-primary" />
             <span className="font-semibold text-cream">4.9 rating</span>
             <span className="opacity-50">•</span>
-            <span>10,000+ happy customers</span>
+            <span>5,000+ happy customers</span>
           </div>
         </div>
 
