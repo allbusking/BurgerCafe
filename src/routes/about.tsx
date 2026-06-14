@@ -533,8 +533,7 @@ function LocationSection() {
                 HOUSE OF SHAWARMA
               </h2>
               <p className="mt-4 text-base leading-7 text-muted-foreground md:text-lg">
-                Siliguri, West Bengal. Visit us, pick up your order, or use the map for
-                directions.
+                Siliguri, West Bengal. Visit us, pick up your order, or use the map for directions.
               </p>
             </div>
 
