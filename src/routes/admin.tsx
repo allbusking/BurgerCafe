@@ -446,7 +446,10 @@ function OrdersTable({
                 className={`border-b border-white/5 transition-colors ${expandable ? "cursor-pointer" : ""} hover:bg-white/[0.03]`}
               >
                 <td className="px-6 py-4 font-mono text-xs text-neon">{o.id}</td>
-                <td className="px-6 py-4">{o.customer}</td>
+                <td className="px-6 py-4">
+                  <div className="font-medium">{o.customer}</div>
+                  <div className="mt-1 text-xs text-foreground/50">{o.customerEmail}</div>
+                </td>
                 <td className="px-6 py-4 text-foreground/70">
                   {o.items.map((item) => `${item.name} x ${item.qty}`).join(", ")}
                 </td>
