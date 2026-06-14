@@ -82,7 +82,7 @@ export function Footer() {
                   href="tel:+919876543210"
                   className="font-body text-cream/70 text-sm hover:text-neon transition-colors"
                 >
-                  +91 98765 43210
+                  +91 9000000000
                 </a>
               </li>
               <li className="flex gap-3 items-center">
@@ -135,14 +135,14 @@ export function Footer() {
       <div className="border-t border-cream/8">
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-cream/40 font-body text-xs">
-            &copy; 2024 House of Tea Bubble & Burgers. All rights reserved.
+            &copy; 2025 House of Bubble Tea & Burgers. All rights reserved.
           </p>
           <div className="flex gap-6">
             <a
               href="#"
               className="text-cream/40 font-body text-xs hover:text-neon transition-colors"
             >
-              Privacy Policy
+              Privacy Policy 
             </a>
             <a
               href="#"
